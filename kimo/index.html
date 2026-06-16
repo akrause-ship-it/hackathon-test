@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キモかわ — Creature Slots</title>
+<meta name="description" content="A 3-reel slot machine that mashes the head, body, and tail of cute-creepy animals into one regrettable little guy. Kimo-kawaii creature generator by André Krause.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎰</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg:#e7e3d4; --bg-deep:#d6d1bb; --ink:#2a2620;
+    --slime:#9bbf5c; --slime-deep:#6f9437; --bruise:#b88ec9;
+    --gum:#f2a9c4; --eye:#fffef2; --shadow:#4a4334; --radius:26px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(circle at 20% 10%, #efecdd 0%, transparent 50%),
+      radial-gradient(circle at 90% 80%, #ddd9c4 0%, transparent 55%), var(--bg);
+    color:var(--ink); font-family:'Zen Maru Gothic',sans-serif;
+    min-height:100vh; padding:28px 18px 70px; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px;margin:0 auto}
+
+  header{text-align:center;margin-bottom:30px;position:relative}
+  .eyebrow{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.32em;
+    text-transform:uppercase;color:var(--slime-deep);font-weight:500}
+  h1{font-size:clamp(36px,8.5vw,72px);font-weight:900;line-height:.92;margin:6px 0 4px;letter-spacing:-.02em}
+  h1 .jp{display:block;font-size:.42em;color:var(--bruise);letter-spacing:.1em;font-weight:700}
+  .tag{font-family:'DM Mono',monospace;font-size:13px;color:var(--shadow);opacity:.8}
+  .byline{font-family:'DM Mono',monospace;font-size:11px;color:var(--shadow);opacity:.55;margin-top:8px;letter-spacing:.08em}
+  .blink{position:absolute;top:-6px;right:8%;width:54px;height:54px;background:var(--eye);
+    border:3px solid var(--ink);border-radius:50%;display:grid;place-items:center;transform:rotate(-8deg)}
+  .blink::after{content:"";width:18px;height:18px;background:var(--ink);border-radius:50%;animation:dart 4s infinite ease-in-out}
+  @keyframes dart{0%,40%{transform:translate(0,0)}50%{transform:translate(7px,-3px)}70%{transform:translate(-6px,4px)}100%{transform:translate(0,0)}}
+
+  .lab{display:grid;grid-template-columns:1fr 1.05fr;gap:24px;align-items:start}
+  @media(max-width:760px){.lab{grid-template-columns:1fr}}
+  .panel{background:var(--bg-deep);border:3px solid var(--ink);border-radius:var(--radius);
+    padding:22px;box-shadow:7px 7px 0 var(--shadow)}
+  .panel h2{font-size:15px;font-family:'DM Mono',monospace;text-transform:uppercase;
+    letter-spacing:.18em;margin-bottom:18px;color:var(--slime-deep)}
+
+  /* selectors */
+  .slot{margin-bottom:16px}
+  .slot label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--shadow)}
+  .slot label b{font-family:'DM Mono',monospace;color:var(--bruise);font-size:11px}
+  .picker{display:flex;gap:8px}
+  select{flex:1;appearance:none;background:var(--eye);border:3px solid var(--ink);border-radius:14px;
+    padding:12px 14px;font-family:'Zen Maru Gothic';font-weight:700;font-size:15px;color:var(--ink);cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%232a2620' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 14px center}
+  .reroll{background:var(--gum);border:3px solid var(--ink);border-radius:14px;width:48px;cursor:pointer;font-size:20px;transition:transform .15s}
+  .reroll:hover{transform:rotate(-12deg) scale(1.08)}
+  .reroll:active{transform:rotate(8deg) scale(.94)}
+  .controls{display:flex;gap:10px;margin-top:22px}
+  button.act{flex:1;border:3px solid var(--ink);border-radius:16px;padding:14px;font-family:'Zen Maru Gothic';
+    font-weight:900;font-size:16px;cursor:pointer;box-shadow:4px 4px 0 var(--ink);transition:transform .1s,box-shadow .1s}
+  button.act:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--ink)}
+  button.act:disabled{opacity:.5;cursor:not-allowed}
+  .shuffle{background:var(--bruise)}
+  .spin{background:var(--slime)}
+
+  /* slot machine */
+  .stagewrap{display:flex;gap:14px;align-items:stretch;justify-content:center}
+  .machine{width:248px;border:4px solid var(--ink);border-radius:20px;overflow:hidden;
+    background:repeating-conic-gradient(var(--bg) 0% 25%, var(--bg-deep) 0% 50%) 0/36px 36px;
+    box-shadow:inset 0 0 40px rgba(74,67,52,.25)}
+  @media(max-width:420px){.machine{width:200px}}
+  .reel{position:relative;overflow:hidden;border-bottom:3px dashed var(--ink)}
+  .reel:last-child{border-bottom:none}
+  .strip{display:flex;flex-direction:column;will-change:transform}
+  .tile{flex:none;width:100%}
+  .tile svg{display:block;width:100%;height:auto}
+  .reeltag{position:absolute;top:5px;left:7px;font-family:'DM Mono',monospace;font-size:9px;
+    letter-spacing:.12em;color:var(--shadow);background:var(--eye);border:2px solid var(--ink);
+    border-radius:8px;padding:0 5px;z-index:2;opacity:.9}
+  /* payline arrows on the lever rail */
+  .lever{width:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  .lever .knob{width:26px;height:26px;border-radius:50%;background:var(--gum);border:3px solid var(--ink);
+    cursor:pointer;transition:transform .1s}
+  .lever .knob:active{transform:translateY(6px)}
+  .lever .rail{flex:1;width:6px;background:var(--ink);border-radius:4px}
+
+  /* name + actions */
+  .namebar{margin-top:18px}
+  .namebar .nlabel{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--slime-deep);margin-bottom:6px}
+  .parts{font-family:'DM Mono',monospace;font-size:11px;color:var(--shadow);margin:4px 0 10px;letter-spacing:.04em}
+  .nameinput{width:100%;background:var(--eye);border:3px solid var(--ink);border-radius:14px;
+    padding:13px 16px;font-family:'Zen Maru Gothic';font-weight:900;font-size:22px;color:var(--ink)}
+  .share{display:flex;gap:8px;margin-top:12px}
+  .share button{flex:1;background:var(--bg-deep);border:2px dashed var(--ink);border-radius:12px;padding:10px;
+    font-family:'DM Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;text-transform:uppercase;
+    letter-spacing:.08em;transition:background .15s}
+  .share button:hover{background:var(--gum)}
+
+  .collection{margin-top:32px}
+  .collection h2{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--shadow);margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .collection h2 .count{background:var(--bruise);border:2px solid var(--ink);border-radius:20px;padding:1px 10px;font-size:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:12px}
+  .card{background:var(--bg-deep);border:3px solid var(--ink);border-radius:18px;padding:10px;text-align:center;
+    box-shadow:4px 4px 0 var(--shadow);position:relative}
+  .card .thumb{width:64px;height:96px;margin:0 auto}
+  .card .thumb svg{display:block;width:100%;height:100%}
+  .card .cn{font-weight:900;font-size:14px;margin-top:6px}
+  .card .cp{font-family:'DM Mono',monospace;font-size:9px;color:var(--shadow);margin-top:3px}
+  .card .cd{font-family:'DM Mono',monospace;font-size:8px;color:var(--shadow);opacity:.6;margin-top:4px;letter-spacing:.04em}
+  .card .pub{position:absolute;top:6px;left:8px;font-size:11px}
+  .card .del{position:absolute;top:5px;right:7px;background:none;border:none;cursor:pointer;font-size:14px;
+    opacity:.4;transition:opacity .15s,transform .15s;line-height:1}
+  .card .del:hover{opacity:1;transform:scale(1.25) rotate(12deg)}
+  .col-empty{font-family:'DM Mono',monospace;font-size:12px;color:var(--shadow);opacity:.6}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--ink);
+    color:var(--eye);padding:13px 22px;border-radius:30px;font-family:'DM Mono',monospace;font-size:13px;
+    transition:transform .3s;z-index:9;max-width:88vw;text-align:center}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="blink"></div>
+    <div class="eyebrow">Specimen Synthesizer</div>
+    <h1>Creature Slots<span class="jp">キモかわスロット</span></h1>
+    <p class="tag">// top + middle + bottom → one regrettable little guy</p>
+    <p class="byline">kimo-kawaii creature generator · by André Krause</p>
+  </header>
+
+  <div class="lab">
+    <!-- LEFT: controls -->
+    <div class="panel">
+      <h2>Assemble</h2>
+      <div class="slot">
+        <label><b>TOP</b> the head &amp; what it thinks with</label>
+        <div class="picker"><select id="head"></select><button class="reroll" data-part="head" title="reroll">🎲</button></div>
+      </div>
+      <div class="slot">
+        <label><b>MIDDLE</b> the bulk of the situation</label>
+        <div class="picker"><select id="body"></select><button class="reroll" data-part="body" title="reroll">🎲</button></div>
+      </div>
+      <div class="slot">
+        <label><b>BOTTOM</b> the tail / undercarriage</label>
+        <div class="picker"><select id="tail"></select><button class="reroll" data-part="tail" title="reroll">🎲</button></div>
+      </div>
+      <div class="controls">
+        <button class="act shuffle" id="shuffle">Shuffle all</button>
+        <button class="act spin" id="spin">🎰 Pull the lever</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: slot machine -->
+    <div class="panel">
+      <h2>Specimen</h2>
+      <div class="stagewrap">
+        <div class="machine">
+          <div class="reel" id="reel-head"><span class="reeltag">TOP</span><div class="strip"></div></div>
+          <div class="reel" id="reel-body"><span class="reeltag">MID</span><div class="strip"></div></div>
+          <div class="reel" id="reel-tail"><span class="reeltag">BTM</span><div class="strip"></div></div>
+        </div>
+        <div class="lever" title="pull!">
+          <div class="rail"></div>
+          <div class="knob" id="knob"></div>
+        </div>
+      </div>
+
+      <div class="namebar" id="namebar">
+        <div class="nlabel">Name (must start with K — editable)</div>
+        <input class="nameinput" id="name" value="Kuromochi">
+        <div class="parts" id="parts"></div>
+        <div class="share">
+          <button id="dl">⬇ Download PNG</button>
+          <button id="link">🔗 Private link</button>
+          <button id="pub">👁 Post to gallery</button>
+        </div>
+        <div class="controls" style="margin-top:12px">
+          <button class="act spin" id="save" style="background:var(--gum)">♡ Save to collection</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="collection">
+    <h2>My collection <span class="count" id="count">0</span> <span style="font-family:'DM Mono';font-size:10px;opacity:.6;letter-spacing:.05em">stored on this device</span></h2>
+    <div class="grid" id="grid"><span class="col-empty">Nothing collected yet — your gremlins will appear here.</span></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- animal data: each drives a parametric SVG split into 3 slices ---------- */
+const ANIMALS = [
+  {n:"cat",      col:"#cdb79b", acc:"#a98b6a", ear:"cat",   tex:"smooth", bot:"cattail"},
+  {n:"frog",     col:"#9bbf5c", acc:"#6f9437", ear:"frog",  tex:"smooth", bot:"legs"},
+  {n:"axolotl",  col:"#f2a9c4", acc:"#e986ad", ear:"axolotl",tex:"smooth",bot:"fin"},
+  {n:"rabbit",   col:"#e3ddc8", acc:"#c4b89a", ear:"rabbit",tex:"fuzzy",  bot:"pom"},
+  {n:"octopus",  col:"#b88ec9", acc:"#9d6fb3", ear:"none",  tex:"sucker", bot:"tentacle"},
+  {n:"deer",     col:"#c9a07a", acc:"#a87c52", ear:"deer",  tex:"spot",   bot:"feet"},
+  {n:"fox",      col:"#e0925a", acc:"#c4703a", ear:"fox",   tex:"smooth", bot:"foxtail"},
+  {n:"snail",    col:"#a7a85c", acc:"#7e7e3e", ear:"snail", tex:"shell",  bot:"foot"},
+  {n:"bat",      col:"#8a7d9b", acc:"#6a5d7b", ear:"bat",   tex:"wing",   bot:"feet"},
+  {n:"jellyfish",col:"#f6c9d8", acc:"#e9aac0", ear:"jelly", tex:"jelly",  bot:"jellytail"},
+  {n:"hedgehog", col:"#9c7b5a", acc:"#6f543a", ear:"none",  tex:"spike",  bot:"feet"},
+  {n:"seal",     col:"#aab0b8", acc:"#888f98", ear:"none",  tex:"smooth", bot:"fin"},
+  {n:"owl",      col:"#a98a63", acc:"#7d6244", ear:"owl",   tex:"fuzzy",  bot:"feet"},
+  {n:"salamander",col:"#b6c25a",acc:"#8a9a3a", ear:"none",  tex:"spot",   bot:"legs"},
+  {n:"moth",     col:"#b6a48a", acc:"#8f7d63", ear:"moth",  tex:"wing",   bot:"feet"},
+  {n:"capybara", col:"#a98662", acc:"#856444", ear:"none",  tex:"fuzzy",  bot:"feet"},
+  {n:"pufferfish",col:"#d8c35a",acc:"#b09a35", ear:"none",  tex:"spike",  bot:"fin"},
+  {n:"ferret",   col:"#cdbb9a", acc:"#a98e6a", ear:"none",  tex:"smooth", bot:"foxtail"}
+];
+const INK="#2a2620";
+const KPRE=["Kuro","Kimo","Koge","Kira","Kuma","Kabo","Keke","Kyu","Kappa","Kuni","Kobu","Kero"];
+const KSUF=["mochi","gusu","pyon","goro","nyan","peta","muku","bobo","tan","zuki"];
+const STORE="kimo.collection.v1";
+
+/* ---------- SVG slice builders (each returns markup in a 0..200 x, 0..100 y band) ---------- */
+function bigEye(cx,cy,r){
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${'#fffef2'}" stroke="${INK}" stroke-width="3"/>`
+    +`<circle cx="${cx}" cy="${cy+1}" r="${(r*0.5).toFixed(1)}" fill="${INK}"/>`
+    +`<circle cx="${(cx-r*0.28).toFixed(1)}" cy="${(cy-r*0.32).toFixed(1)}" r="${(r*0.18).toFixed(1)}" fill="#fff"/>`;
+}
+function ears(a){
+  const c=a.col,k=a.acc;
+  switch(a.ear){
+    case"cat":   return `<path d="M62 40 L70 12 L92 40 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M138 40 L130 12 L108 40 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M70 36 L74 22 L84 36 Z" fill="${k}"/>`;
+    case"fox":   return `<path d="M58 42 L66 8 L94 42 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M142 42 L134 8 L106 42 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M70 30 L72 18 L82 33 Z" fill="${INK}"/><path d="M130 30 L128 18 L118 33 Z" fill="${INK}"/>`;
+    case"rabbit":return `<rect x="62" y="2" width="16" height="44" rx="8" fill="${c}" stroke="${INK}" stroke-width="4" transform="rotate(-8 70 24)"/><rect x="122" y="2" width="16" height="44" rx="8" fill="${c}" stroke="${INK}" stroke-width="4" transform="rotate(8 130 24)"/><rect x="66" y="10" width="6" height="28" rx="3" fill="${k}" transform="rotate(-8 70 24)"/>`;
+    case"deer":  return `<path d="M74 38 C70 18 62 16 56 8 M70 24 C62 22 58 18 52 18" stroke="${k}" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M126 38 C130 18 138 16 144 8 M130 24 C138 22 142 18 148 18" stroke="${k}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+    case"owl":   return `<path d="M66 34 L70 16 L84 34 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M134 34 L130 16 L116 34 Z" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
+    case"axolotl":return `<g stroke="${INK}" stroke-width="3" fill="${k}">`
+      +`<path d="M58 56 L40 44 L46 60 L34 58 L44 70"/><path d="M142 56 L160 44 L154 60 L166 58 L156 70"/></g>`;
+    case"bat":   return `<path d="M60 44 C40 8 30 22 40 44 C46 56 56 52 64 50 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M140 44 C160 8 170 22 160 44 C154 56 144 52 136 50 Z" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
+    case"moth":  return `<path d="M82 36 C70 18 58 16 50 10 M82 36 C66 24 56 26 50 22" stroke="${k}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M118 36 C130 18 142 16 150 10 M118 36 C134 24 144 26 150 22" stroke="${k}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    case"jelly": return ""; // dome handled in head shape
+    case"snail": return ""; // eyestalks handled in head shape
+    case"frog":  return ""; // eye bumps handled in head shape
+    default:     return "";
+  }
+}
+function head(a){
+  const c=a.col,k=a.acc;
+  let s=ears(a);
+  if(a.ear==="jelly"){
+    s+=`<path d="M52 92 C44 36 156 36 148 92 Z" fill="${c}" stroke="${INK}" stroke-width="4" opacity=".92"/>`
+      +`<path d="M64 60 q6 -10 12 0 M124 60 q6 -10 12 0" stroke="#fff" stroke-width="3" fill="none" opacity=".6"/>`
+      +bigEye(84,70,12)+bigEye(118,70,11)
+      +`<path d="M94 84 q6 6 12 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    return s;
+  }
+  // base head
+  s+=`<ellipse cx="100" cy="66" rx="46" ry="40" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
+  s+=`<ellipse cx="62" cy="80" rx="9" ry="5" fill="${k}" opacity=".5"/><ellipse cx="138" cy="80" rx="9" ry="5" fill="${k}" opacity=".5"/>`;
+  if(a.ear==="snail"){
+    s+=`<line x1="80" y1="40" x2="72" y2="8" stroke="${INK}" stroke-width="4"/><line x1="120" y1="40" x2="128" y2="8" stroke="${INK}" stroke-width="4"/>`
+      +bigEye(72,8,7)+bigEye(128,8,7)
+      +`<path d="M90 84 q10 7 20 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  }else if(a.ear==="frog"){
+    s+=`<circle cx="76" cy="40" r="17" fill="${c}" stroke="${INK}" stroke-width="4"/><circle cx="124" cy="40" r="17" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+      +bigEye(76,40,11)+bigEye(124,40,11)
+      +`<path d="M78 82 q22 10 44 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  }else{
+    s+=bigEye(83,66,15)+bigEye(120,66,13);
+    s+=`<path d="M93 86 q8 7 16 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+function body(a){
+  const c=a.col,k=a.acc;
+  let s="";
+  // wings render behind the torso
+  if(a.tex==="wing"){
+    s+=`<path d="M50 50 C8 24 4 70 40 74 C30 56 44 52 52 56 Z" fill="${k}" stroke="${INK}" stroke-width="4"/>`
+      +`<path d="M150 50 C192 24 196 70 160 74 C170 56 156 52 148 56 Z" fill="${k}" stroke="${INK}" stroke-width="4"/>`;
+  }
+  s+=`<ellipse cx="100" cy="52" rx="48" ry="44" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
+  s+=`<ellipse cx="100" cy="60" rx="26" ry="28" fill="#fff" opacity=".22"/>`;
+  // little arms
+  s+=`<ellipse cx="54" cy="56" rx="10" ry="15" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+    +`<ellipse cx="146" cy="56" rx="10" ry="15" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
+  switch(a.tex){
+    case"spot":  s+=`<circle cx="84" cy="44" r="6" fill="${k}"/><circle cx="116" cy="56" r="7" fill="${k}"/><circle cx="98" cy="70" r="5" fill="${k}"/><circle cx="120" cy="36" r="4" fill="${k}"/>`;break;
+    case"spike": for(let i=0;i<7;i++){const ang=Math.PI*(0.15+0.7*i/6);const x=100-46*Math.cos(ang),y=52-42*Math.sin(ang);const x2=100-60*Math.cos(ang),y2=52-56*Math.sin(ang);s+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${k}" stroke-width="4" stroke-linecap="round"/>`;}break;
+    case"shell": s+=`<path d="M100 52 m0 -2 a18 18 0 1 1 -1 0 a11 11 0 1 0 1 6 a5 5 0 1 1 0 0" fill="none" stroke="${k}" stroke-width="4"/>`;break;
+    case"sucker":s+=`<g fill="${k}">`;for(let r=0;r<3;r++)for(let cc=0;cc<3;cc++)s+=`<circle cx="${86+cc*14}" cy="${42+r*16}" r="3.2"/>`;s+=`</g>`;break;
+    case"jelly": s+=`<g stroke="#fff" stroke-width="3" opacity=".5" fill="none"><line x1="86" y1="20" x2="86" y2="86"/><line x1="100" y1="16" x2="100" y2="90"/><line x1="114" y1="20" x2="114" y2="86"/></g>`;break;
+    case"fuzzy": {let f="";for(let i=0;i<14;i++){const ang=Math.PI*(i/13);const x=100-48*Math.cos(ang),y=52-44*Math.sin(ang);f+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} l3 -5 l3 5" stroke="${INK}" stroke-width="2.5" fill="none"/>`;}s+=f;break;}
+  }
+  return s;
+}
+function bottom(a){
+  const c=a.col,k=a.acc;
+  let s=`<ellipse cx="100" cy="10" rx="34" ry="16" fill="${c}" stroke="${INK}" stroke-width="4"/>`; // connector
+  switch(a.bot){
+    case"legs":   s+=`<path d="M78 16 C60 30 58 54 74 64 C66 66 64 60 66 54" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M122 16 C140 30 142 54 126 64 C134 66 136 60 134 54" fill="${c}" stroke="${INK}" stroke-width="4"/><ellipse cx="74" cy="66" rx="12" ry="6" fill="${k}" stroke="${INK}" stroke-width="3"/><ellipse cx="126" cy="66" rx="12" ry="6" fill="${k}" stroke="${INK}" stroke-width="3"/>`;break;
+    case"feet":   s+=`<ellipse cx="84" cy="40" rx="13" ry="22" fill="${c}" stroke="${INK}" stroke-width="4"/><ellipse cx="116" cy="40" rx="13" ry="22" fill="${c}" stroke="${INK}" stroke-width="4"/><ellipse cx="84" cy="56" rx="13" ry="7" fill="${k}"/><ellipse cx="116" cy="56" rx="13" ry="7" fill="${k}"/>`;break;
+    case"foxtail":s+=`<path d="M100 12 C150 14 168 50 120 76 C150 44 120 28 96 30 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M132 64 C150 50 150 36 138 30" stroke="${k}" stroke-width="9" fill="none" stroke-linecap="round"/>`;break;
+    case"cattail":s+=`<path d="M100 14 C150 18 160 60 124 64" fill="none" stroke="${c}" stroke-width="13" stroke-linecap="round"/><path d="M100 14 C150 18 160 60 124 64" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" opacity=".25"/>`;break;
+    case"pom":    s+=`<ellipse cx="80" cy="34" rx="11" ry="18" fill="${c}" stroke="${INK}" stroke-width="4"/><ellipse cx="120" cy="34" rx="11" ry="18" fill="${c}" stroke="${INK}" stroke-width="4"/><circle cx="100" cy="48" r="18" fill="#fff" stroke="${INK}" stroke-width="4"/>`;break;
+    case"tentacle":{for(let i=0;i<5;i++){const x=64+i*18;const dir=i%2?1:-1;s+=`<path d="M${x} 12 q${10*dir} 28 ${4*dir} 56 q${-8*dir} 14 ${2*dir} 22" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round"/>`;}break;}
+    case"jellytail":{for(let i=0;i<7;i++){const x=58+i*15;s+=`<path d="M${x} 10 q${i%2?8:-8} 30 0 60 q${i%2?-6:6} 16 0 26" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" opacity=".85"/>`;}break;}
+    case"fin":    s+=`<path d="M100 12 C120 12 134 24 126 44 L150 70 L118 60 L100 78 L82 60 L50 70 L74 44 C66 24 80 12 100 12 Z" fill="${c}" stroke="${INK}" stroke-width="4"/>`;break;
+    case"foot":   s+=`<path d="M50 30 C70 14 130 14 150 30 C150 48 120 60 100 60 C80 60 50 48 50 30 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M62 44 C80 52 120 52 138 44" stroke="${k}" stroke-width="3" fill="none" opacity=".6"/>`;break;
+  }
+  return s;
+}
+const BUILDERS={head,body,tail:bottom};
+
+function tileSVG(part,i){return `<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">${BUILDERS[part](ANIMALS[i])}</svg>`;}
+function compositeSVG(idx){
+  return `<svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">`
+    +`<g>${head(ANIMALS[idx.head])}</g>`
+    +`<g transform="translate(0,100)">${body(ANIMALS[idx.body])}</g>`
+    +`<g transform="translate(0,200)">${bottom(ANIMALS[idx.tail])}</g></svg>`;
+}
+
+/* ---------- app state + reels ---------- */
+const $=id=>document.getElementById(id);
+const sel={head:$('head'),body:$('body'),tail:$('tail')};
+const reel={head:$('reel-head').querySelector('.strip'),body:$('reel-body').querySelector('.strip'),tail:$('reel-tail').querySelector('.strip')};
+let collection=load();
+let idx={head:0,body:0,tail:0};
+let spinning=false;
+
+function load(){try{return JSON.parse(localStorage.getItem(STORE))||[]}catch(e){return[]}}
+function persist(){try{localStorage.setItem(STORE,JSON.stringify(collection))}catch(e){}}
+
+// build selects + reel strips (3 copies of the pool for a long spin)
+for(const part in sel){
+  ANIMALS.forEach((a,i)=>{const o=document.createElement('option');o.value=i;o.textContent=a.e?a.e+"  "+a.n:a.n;sel[part].appendChild(o);});
+  let strip="";
+  for(let copy=0;copy<3;copy++) ANIMALS.forEach((a,i)=>{strip+=`<div class="tile">${tileSVG(part,i)}</div>`;});
+  reel[part].innerHTML=strip;
+}
+function tileH(part){return reel[part].querySelector('.tile').offsetHeight||120;}
+// place a reel on an index without animating
+function place(part,i){reel[part].style.transition='none';reel[part].style.transform=`translateY(${-(ANIMALS.length+i)*tileH(part)}px)`;}
+// animate a reel to land on index i
+function spinTo(part,i,dur){
+  const h=tileH(part), n=ANIMALS.length;
+  reel[part].style.transition='none';
+  reel[part].style.transform=`translateY(0px)`;
+  void reel[part].offsetHeight; // reflow
+  reel[part].style.transition=`transform ${dur}s cubic-bezier(.12,.78,.2,1)`;
+  reel[part].style.transform=`translateY(${-(2*n+i)*h}px)`;
+}
+
+function syncSelects(){for(const p in sel)sel[p].value=idx[p];}
+function partsText(){return `top: ${ANIMALS[idx.head].n} · mid: ${ANIMALS[idx.body].n} · btm: ${ANIMALS[idx.tail].n}`;}
+function refreshMeta(){$('parts').textContent=partsText();}
+
+function suggestName(){
+  const k=KPRE[Math.floor(Math.random()*KPRE.length)];
+  const pool=[ANIMALS[idx.head].n,ANIMALS[idx.body].n,ANIMALS[idx.tail].n];
+  let suf;
+  if(Math.random()<0.55){const src=pool[Math.floor(Math.random()*3)];suf=src.slice(Math.max(1,src.length-3));}
+  else suf=KSUF[Math.floor(Math.random()*KSUF.length)];
+  $('name').value=k+suf.charAt(0).toUpperCase()+suf.slice(1);
+}
+
+function lockUI(on){spinning=on;['spin','shuffle','save'].forEach(id=>$(id).disabled=on);
+  document.querySelectorAll('.reroll').forEach(b=>b.disabled=on);}
+
+// spin one part (used by dice). resolves when settled.
+function spinPart(part,target,dur){
+  return new Promise(res=>{
+    idx[part]=target; spinTo(part,target,dur);
+    setTimeout(()=>{place(part,target);res();},dur*1000+30);
+  });
+}
+async function diceOne(part){
+  if(spinning)return; lockUI(true);
+  await spinPart(part,Math.floor(Math.random()*ANIMALS.length),0.9);
+  syncSelects(); refreshMeta(); lockUI(false);
+}
+async function pickOne(part,target){
+  if(spinning)return; lockUI(true);
+  await spinPart(part,target,0.7); refreshMeta(); lockUI(false);
+}
+async function spinAll(random){
+  if(spinning)return; lockUI(true);
+  const durs={head:1.0,body:1.25,tail:1.5};
+  const jobs=['head','body','tail'].map(p=>{
+    const t=random?Math.floor(Math.random()*ANIMALS.length):idx[p];
+    return spinPart(p,t,durs[p]);
+  });
+  await Promise.all(jobs);
+  syncSelects(); refreshMeta(); suggestName(); lockUI(false);
+}
+
+/* ---------- wire up ---------- */
+document.querySelectorAll('.reroll').forEach(b=>b.onclick=()=>diceOne(b.dataset.part));
+for(const p in sel) sel[p].onchange=()=>pickOne(p,+sel[p].value);
+$('shuffle').onclick=()=>spinAll(true);
+$('spin').onclick=()=>spinAll(true);
+$('knob').onclick=()=>spinAll(true);
+
+$('name').addEventListener('input',e=>{let v=e.target.value;if(v&&v[0].toUpperCase()!=='K')e.target.value='K'+v.replace(/^k/i,'');});
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('show'),1900);}
+
+$('dl').onclick=()=>downloadPNG(idx,$('name').value);
+$('link').onclick=()=>{const u=location.href.split('#')[0]+'#c='+[idx.head,idx.body,idx.tail].join('-')+'&k='+encodeURIComponent($('name').value);
+  navigator.clipboard?.writeText(u).catch(()=>{});toast('🔗 private link copied (mock)');};
+$('pub').onclick=()=>{saveCreature(true);toast('👁 posted to public gallery (mock) + saved');};
+$('save').onclick=()=>{saveCreature(false);toast('♡ saved to collection');};
+
+function saveCreature(isPublic){
+  collection.unshift({
+    id:'c_'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),
+    name:$('name').value,
+    head:idx.head, body:idx.body, tail:idx.tail,
+    headAnimal:ANIMALS[idx.head].n, bodyAnimal:ANIMALS[idx.body].n, tailAnimal:ANIMALS[idx.tail].n,
+    parts:`${ANIMALS[idx.head].n}/${ANIMALS[idx.body].n}/${ANIMALS[idx.tail].n}`,
+    createdAt:Date.now(), isPublic:!!isPublic, userId:null
+  });
+  persist(); renderCollection();
+}
+
+function downloadPNG(creatureIdx,name){
+  const svg=compositeSVG(creatureIdx);
+  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+  const img=new Image();
+  img.onload=()=>{
+    const c=document.createElement('canvas');c.width=400;c.height=600;
+    const ctx=c.getContext('2d');ctx.fillStyle='#e7e3d4';ctx.fillRect(0,0,400,600);
+    ctx.drawImage(img,0,0,400,600);URL.revokeObjectURL(url);
+    const a=document.createElement('a');a.download=(name||'creature')+'.png';a.href=c.toDataURL('image/png');a.click();
+    toast('⬇ PNG downloaded');
+  };
+  img.onerror=()=>toast('PNG export failed');
+  img.src=url;
+}
+
+function fmtDate(ts){return new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+function renderCollection(){
+  $('count').textContent=collection.length;
+  const g=$('grid');
+  if(!collection.length){g.innerHTML='<span class="col-empty">Nothing collected yet — your gremlins will appear here.</span>';return;}
+  g.innerHTML='';
+  collection.forEach(c=>{
+    const d=document.createElement('div');d.className='card';
+    d.innerHTML=(c.isPublic?'<span class="pub" title="in public gallery">👁</span>':'')
+      +`<button class="del" data-id="${c.id}" title="delete">✕</button>`
+      +`<div class="thumb">${compositeSVG({head:c.head,body:c.body,tail:c.tail})}</div>`
+      +`<div class="cn">${c.name}</div><div class="cp">${c.parts}</div><div class="cd">${fmtDate(c.createdAt)}</div>`;
+    g.appendChild(d);
+  });
+  g.querySelectorAll('.del').forEach(btn=>btn.onclick=()=>{collection=collection.filter(c=>c.id!==btn.dataset.id);persist();renderCollection();toast('removed');});
+}
+
+/* ---------- init: random start, support shared #c=a-b-c link ---------- */
+(function init(){
+  const m=location.hash.match(/c=(\d+)-(\d+)-(\d+)/);
+  if(m){idx={head:+m[1]%ANIMALS.length,body:+m[2]%ANIMALS.length,tail:+m[3]%ANIMALS.length};}
+  else{idx={head:Math.floor(Math.random()*ANIMALS.length),body:Math.floor(Math.random()*ANIMALS.length),tail:Math.floor(Math.random()*ANIMALS.length)};}
+  for(const p in sel) place(p,idx[p]);
+  syncSelects(); refreshMeta();
+  const km=location.hash.match(/k=([^&]+)/);
+  if(km)$('name').value=decodeURIComponent(km[1]); else suggestName();
+  renderCollection();
+})();
+window.addEventListener('resize',()=>{for(const p in sel)place(p,idx[p]);});
+</script>
+</body>
+</html>
