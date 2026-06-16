@@ -182,8 +182,10 @@
     showNotice('Loading live leaders…', false);
     $('plist').innerHTML = '';
 
+    const cfg = window.STAT_CONFIG[G].stats[S];
+    const opts = { apiKey: cfg.api, position: cfg.position };
     try {
-      const { rows: data, season, fellBack, requestedSeason } = await window.MLB.getLeaders(G, S);
+      const { rows: data, season, fellBack, requestedSeason } = await window.MLB.getLeaders(G, S, opts);
       if (token !== loadToken) return;       // a newer load superseded this one
 
       rows = data;
@@ -214,23 +216,27 @@
       renderPlayer();
       playDemo();
 
-      // Best-effort: pull the previous season's leader for this stat as a benchmark.
-      const refSeason = season - 1;
-      window.MLB.seasonLeaders(G, S, refSeason)
-        .then(prev => {
-          if (token !== loadToken) return;    // stat/group changed meanwhile
-          if (prev && prev.length) {
-            const last = prev[prev.length - 1];
-            prevRef = {
-              season: refSeason,
-              hi: { value: prev[0].value, name: prev[0].name },
-              lo: { value: last.value, name: last.name, rank: last.rank },
-            };
-          } else { prevRef = null; }
-          renderPrev();
-          renderChart();                       // overlay last-year marks if on scale
-        })
-        .catch(() => { if (token === loadToken) { prevRef = null; renderPrev(); renderChart(); } });
+      // Previous-season benchmark — skipped for position-filtered stats, where
+      // the API's position filter is unreliable across seasons (would show
+      // wrong-position leaders). The current-season top 10 is unaffected.
+      if (!cfg.position) {
+        const refSeason = season - 1;
+        window.MLB.seasonLeaders(G, S, refSeason, opts)
+          .then(prev => {
+            if (token !== loadToken) return;    // stat/group changed meanwhile
+            if (prev && prev.length) {
+              const last = prev[prev.length - 1];
+              prevRef = {
+                season: refSeason,
+                hi: { value: prev[0].value, name: prev[0].name },
+                lo: { value: last.value, name: last.name, rank: last.rank },
+              };
+            } else { prevRef = null; }
+            renderPrev();
+            renderChart();                       // overlay last-year marks if on scale
+          })
+          .catch(() => { if (token === loadToken) { prevRef = null; renderPrev(); renderChart(); } });
+      }
     } catch (err) {
       if (token !== loadToken) return;
       $('feed-note').textContent = 'offline';

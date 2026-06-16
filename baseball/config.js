@@ -116,6 +116,22 @@ window.STAT_CONFIG = {
         elite: r => `#${r.rank} with <b>${r.value} PO</b>. Constantly in the middle of the action.`,
         anim: 'fly',
       },
+      putOutsC: {
+        name: 'C PO', full: 'Putouts — Catcher', cumulative: true,
+        api: 'putOuts', position: 'C',
+        mean: 'Outs a catcher records directly — the vast majority are catching strike three.',
+        play: 'Strike three — the catcher squeezes it for the out.',
+        elite: r => `#${r.rank} with <b>${r.value} putouts</b> behind the plate — a true workhorse catcher.`,
+        anim: 'k',
+      },
+      putOutsOF: {
+        name: 'OF PO', full: 'Putouts — Outfield', cumulative: true,
+        api: 'putOuts', position: 'OF',
+        mean: 'Fly balls and line drives an outfielder runs down and catches for outs.',
+        play: 'Fly ball to the gap — tracked down and hauled in.',
+        elite: r => `#${r.rank} with <b>${r.value} putouts</b> in the outfield — covers serious ground.`,
+        anim: 'fly',
+      },
       assists: {
         name: 'A', full: 'Assists', cumulative: true,
         mean: 'Throws that lead to an out recorded by a teammate.',

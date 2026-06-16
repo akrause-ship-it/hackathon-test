@@ -76,12 +76,18 @@
     }));
   }
 
-  async function fetchSeason(group, statKey, season) {
-    const cacheKey = `${group}|${statKey}|${season}`;
+  // opts: { apiKey } overrides the leaderCategories key (so two stats can share
+  // one API category, e.g. putOuts), { position } filters by fielding position.
+  async function fetchSeason(group, statKey, season, opts) {
+    opts = opts || {};
+    const apiKey = opts.apiKey || statKey;
+    const pos = opts.position || '';
+    const cacheKey = `${group}|${statKey}|${season}|${pos}`;
     if (leaderCache.has(cacheKey)) return leaderCache.get(cacheKey);
 
-    const url = `${BASE}/stats/leaders?leaderCategories=${encodeURIComponent(statKey)}`
+    let url = `${BASE}/stats/leaders?leaderCategories=${encodeURIComponent(apiKey)}`
       + `&season=${season}&sportId=1&limit=10&statGroup=${group}`;
+    if (pos) url += `&position=${encodeURIComponent(pos)}`;
     const data = await fetchJSON(url);
     const block = (data.leagueLeaders || []).find(b => (b.leaders || []).length) || (data.leagueLeaders || [])[0];
     const rows = await normalize((block && block.leaders) || []);
@@ -89,20 +95,20 @@
     return rows;
   }
 
-  async function getLeaders(group, statKey) {
+  async function getLeaders(group, statKey, opts) {
     const season = currentSeason();
-    let rows = await fetchSeason(group, statKey, season);
+    let rows = await fetchSeason(group, statKey, season, opts);
 
     if (rows.length) return { rows, season, fellBack: false, requestedSeason: season };
 
     // Early/offseason: nothing yet this year — fall back to last completed season.
     const prev = season - 1;
-    rows = await fetchSeason(group, statKey, prev);
+    rows = await fetchSeason(group, statKey, prev, opts);
     return { rows, season: prev, fellBack: true, requestedSeason: season };
   }
 
   // Leaders for one specific season (cached). Used for the "last year" benchmark.
-  function seasonLeaders(group, statKey, season) { return fetchSeason(group, statKey, season); }
+  function seasonLeaders(group, statKey, season, opts) { return fetchSeason(group, statKey, season, opts); }
 
   window.MLB = { currentSeason, getLeaders, seasonLeaders };
 })();
