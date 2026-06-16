@@ -310,7 +310,8 @@ function body(a){
     case"jelly": s+=`<g stroke="#fff" stroke-width="3" opacity=".5" fill="none"><line x1="86" y1="20" x2="86" y2="86"/><line x1="100" y1="16" x2="100" y2="90"/><line x1="114" y1="20" x2="114" y2="86"/></g>`;break;
     case"fuzzy": {let f="";for(let i=0;i<15;i++){const ang=Math.PI*(i/14);const x=100-44*Math.cos(ang),y=55-46*Math.sin(ang);f+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} l3 -5 l3 5" stroke="${INK}" stroke-width="2.5" fill="none"/>`;}s+=f;break;}
   }
-  return s;
+  // shift the whole body slice up so it meets the head (closes the head/body gap)
+  return `<g transform="translate(0,-10)">${s}</g>`;
 }
 function bottom(a){
   const c=a.col,k=a.acc;
