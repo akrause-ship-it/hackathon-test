@@ -65,18 +65,13 @@
 
   /* slot machine */
   .stagewrap{display:flex;gap:14px;align-items:stretch;justify-content:center}
-  .machine{width:248px;border:4px solid var(--ink);border-radius:20px;overflow:hidden;
-    background:repeating-conic-gradient(var(--bg) 0% 25%, var(--bg-deep) 0% 50%) 0/36px 36px;
-    box-shadow:inset 0 0 40px rgba(74,67,52,.25)}
+  .machine{width:248px;border:4px solid var(--ink);border-radius:20px;overflow:hidden;background:#fff}
   @media(max-width:420px){.machine{width:200px}}
   .reel{position:relative;overflow:hidden;border-bottom:3px dashed var(--ink)}
   .reel:last-child{border-bottom:none}
   .strip{display:flex;flex-direction:row;will-change:transform}
   .tile{flex:0 0 100%}
   .tile svg{display:block;width:100%;height:auto}
-  .reeltag{position:absolute;top:5px;left:7px;font-family:'DM Mono',monospace;font-size:9px;
-    letter-spacing:.12em;color:var(--shadow);background:var(--eye);border:2px solid var(--ink);
-    border-radius:8px;padding:0 5px;z-index:2;opacity:.9}
   /* payline arrows on the lever rail */
   .lever{width:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
   .lever .knob{width:26px;height:26px;border-radius:50%;background:var(--gum);border:3px solid var(--ink);
@@ -104,7 +99,7 @@
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:12px}
   .card{background:var(--bg-deep);border:3px solid var(--ink);border-radius:18px;padding:10px;text-align:center;
     box-shadow:4px 4px 0 var(--shadow);position:relative}
-  .card .thumb{width:64px;height:96px;margin:0 auto}
+  .card .thumb{width:64px;height:96px;margin:0 auto;background:#fff;border:2px solid var(--ink);border-radius:10px;overflow:hidden}
   .card .thumb svg{display:block;width:100%;height:100%}
   .card .cn{font-weight:900;font-size:14px;margin-top:6px}
   .card .cp{font-family:'DM Mono',monospace;font-size:9px;color:var(--shadow);margin-top:3px}
@@ -158,9 +153,9 @@
       <h2>Specimen</h2>
       <div class="stagewrap">
         <div class="machine">
-          <div class="reel" id="reel-head"><span class="reeltag">TOP</span><div class="strip"></div></div>
-          <div class="reel" id="reel-body"><span class="reeltag">MID</span><div class="strip"></div></div>
-          <div class="reel" id="reel-tail"><span class="reeltag">BTM</span><div class="strip"></div></div>
+          <div class="reel" id="reel-head"><div class="strip"></div></div>
+          <div class="reel" id="reel-body"><div class="strip"></div></div>
+          <div class="reel" id="reel-tail"><div class="strip"></div></div>
         </div>
         <div class="lever" title="pull!">
           <div class="rail"></div>
