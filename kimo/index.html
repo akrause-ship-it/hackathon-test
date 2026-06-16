@@ -69,6 +69,8 @@
   @media(max-width:420px){.machine{width:200px}}
   .reel{position:relative;overflow:hidden;border-bottom:3px dashed var(--ink)}
   .reel:last-child{border-bottom:none}
+  /* the body slice doesn't fill its tile, so crop the middle reel shorter to remove the white space under the body */
+  #reel-body{aspect-ratio:200/93}
   .strip{display:flex;flex-direction:row;will-change:transform}
   .tile{flex:0 0 100%}
   .tile svg{display:block;width:100%;height:auto}
