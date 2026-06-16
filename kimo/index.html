@@ -221,10 +221,14 @@ const STORE="kimo.collection.v1";
 
 /* ---------- SVG slice builders (each returns markup in a 0..200 x, 0..100 y band) ---------- */
 function bigEye(cx,cy,r){
-  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${'#fffef2'}" stroke="${INK}" stroke-width="3"/>`
-    +`<circle cx="${cx}" cy="${cy+1}" r="${(r*0.5).toFixed(1)}" fill="${INK}"/>`
-    +`<circle cx="${(cx-r*0.28).toFixed(1)}" cy="${(cy-r*0.32).toFixed(1)}" r="${(r*0.18).toFixed(1)}" fill="#fff"/>`;
+  // glossy kimo-kawaii eye: warm dark iris, two highlights, soft lower sparkle
+  return `<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${(r*1.07).toFixed(1)}" fill="#fffef2" stroke="${INK}" stroke-width="3.5"/>`
+    +`<circle cx="${cx}" cy="${(cy+r*0.16).toFixed(1)}" r="${(r*0.62).toFixed(1)}" fill="#3b2f25"/>`
+    +`<circle cx="${cx}" cy="${(cy+r*0.16).toFixed(1)}" r="${(r*0.34).toFixed(1)}" fill="#16110d"/>`
+    +`<circle cx="${(cx-r*0.32).toFixed(1)}" cy="${(cy-r*0.30).toFixed(1)}" r="${(r*0.28).toFixed(1)}" fill="#fff"/>`
+    +`<circle cx="${(cx+r*0.30).toFixed(1)}" cy="${(cy+r*0.42).toFixed(1)}" r="${(r*0.13).toFixed(1)}" fill="#fff" opacity=".9"/>`;
 }
+function blush(cx,cy){return `<ellipse cx="${cx}" cy="${cy}" rx="9" ry="5" fill="#ef9bb3" opacity=".5"/>`;}
 function ears(a){
   const c=a.col,k=a.acc;
   switch(a.ear){
@@ -247,26 +251,33 @@ function head(a){
   const c=a.col,k=a.acc;
   let s=ears(a);
   if(a.ear==="jelly"){
-    s+=`<path d="M52 92 C44 36 156 36 148 92 Z" fill="${c}" stroke="${INK}" stroke-width="4" opacity=".92"/>`
-      +`<path d="M64 60 q6 -10 12 0 M124 60 q6 -10 12 0" stroke="#fff" stroke-width="3" fill="none" opacity=".6"/>`
-      +bigEye(84,70,12)+bigEye(118,70,11)
-      +`<path d="M94 84 q6 6 12 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    s+=`<path d="M50 94 C40 30 160 30 150 94 Z" fill="${c}" stroke="${INK}" stroke-width="4" opacity=".94"/>`
+      +`<ellipse cx="90" cy="50" rx="34" ry="18" fill="#fff" opacity=".18"/>`
+      +`<path d="M58 90 q7 -13 14 0 M78 92 q7 -13 14 0 M108 92 q7 -13 14 0 M128 90 q7 -13 14 0" stroke="#fff" stroke-width="3" fill="none" opacity=".5"/>`
+      +blush(70,78)+blush(130,78)
+      +bigEye(84,66,14)+bigEye(118,66,13)
+      +`<path d="M97 82 q5 5 10 0" stroke="${INK}" stroke-width="3" fill="none"/>`;
     return s;
   }
-  // base head
-  s+=`<ellipse cx="100" cy="66" rx="46" ry="40" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
-  s+=`<ellipse cx="62" cy="80" rx="9" ry="5" fill="${k}" opacity=".5"/><ellipse cx="138" cy="80" rx="9" ry="5" fill="${k}" opacity=".5"/>`;
+  // base head with soft shading
+  s+=`<ellipse cx="100" cy="64" rx="47" ry="43" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
+  s+=`<ellipse cx="82" cy="42" rx="24" ry="14" fill="#fff" opacity=".22"/>`;        // top sheen
+  s+=`<ellipse cx="100" cy="94" rx="38" ry="13" fill="${k}" opacity=".16"/>`;        // chin shadow
   if(a.ear==="snail"){
-    s+=`<line x1="80" y1="40" x2="72" y2="8" stroke="${INK}" stroke-width="4"/><line x1="120" y1="40" x2="128" y2="8" stroke="${INK}" stroke-width="4"/>`
-      +bigEye(72,8,7)+bigEye(128,8,7)
-      +`<path d="M90 84 q10 7 20 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    s+=`<path d="M82 38 C80 22 74 16 72 8 M118 38 C120 22 126 16 128 8" stroke="${INK}" stroke-width="4" fill="none"/>`
+      +`<circle cx="72" cy="8" r="8" fill="${c}" stroke="${INK}" stroke-width="3"/><circle cx="128" cy="8" r="8" fill="${c}" stroke="${INK}" stroke-width="3"/>`
+      +bigEye(72,8,5)+bigEye(128,8,5)
+      +blush(78,74)+blush(122,74)
+      +`<path d="M92 78 q8 6 16 0" stroke="${INK}" stroke-width="3" fill="none"/>`;
   }else if(a.ear==="frog"){
-    s+=`<circle cx="76" cy="40" r="17" fill="${c}" stroke="${INK}" stroke-width="4"/><circle cx="124" cy="40" r="17" fill="${c}" stroke="${INK}" stroke-width="4"/>`
-      +bigEye(76,40,11)+bigEye(124,40,11)
-      +`<path d="M78 82 q22 10 44 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    s+=`<circle cx="74" cy="38" r="18" fill="${c}" stroke="${INK}" stroke-width="4"/><circle cx="126" cy="38" r="18" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+      +bigEye(74,38,12)+bigEye(126,38,12)
+      +blush(62,70)+blush(138,70)
+      +`<path d="M74 78 q26 13 52 0" stroke="${INK}" stroke-width="3" fill="none"/>`;
   }else{
-    s+=bigEye(83,66,15)+bigEye(120,66,13);
-    s+=`<path d="M93 86 q8 7 16 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    s+=blush(70,78)+blush(130,78);
+    s+=bigEye(83,64,15)+bigEye(120,64,14);
+    s+=`<path d="M92 84 q4 4 8 0 q4 4 8 0" stroke="${INK}" stroke-width="3" fill="none"/>`; // tiny ω mouth
   }
   return s;
 }
@@ -275,48 +286,66 @@ function body(a){
   let s="";
   // wings render behind the torso
   if(a.tex==="wing"){
-    s+=`<path d="M50 50 C8 24 4 70 40 74 C30 56 44 52 52 56 Z" fill="${k}" stroke="${INK}" stroke-width="4"/>`
-      +`<path d="M150 50 C192 24 196 70 160 74 C170 56 156 52 148 56 Z" fill="${k}" stroke="${INK}" stroke-width="4"/>`;
+    s+=`<path d="M52 50 C6 22 0 72 40 76 C26 60 40 52 54 56 Z" fill="${k}" stroke="${INK}" stroke-width="4"/>`
+      +`<path d="M148 50 C194 22 200 72 160 76 C174 60 160 52 146 56 Z" fill="${k}" stroke="${INK}" stroke-width="4"/>`
+      +`<path d="M42 60 q7 9 13 2 M158 60 q-7 9 -13 2" stroke="${INK}" stroke-width="2" fill="none" opacity=".4"/>`;
   }
-  s+=`<ellipse cx="100" cy="52" rx="48" ry="44" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
-  s+=`<ellipse cx="100" cy="60" rx="26" ry="28" fill="#fff" opacity=".22"/>`;
-  // little arms
-  s+=`<ellipse cx="54" cy="56" rx="10" ry="15" fill="${c}" stroke="${INK}" stroke-width="4"/>`
-    +`<ellipse cx="146" cy="56" rx="10" ry="15" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
+  // mitten arms (behind the torso)
+  s+=`<ellipse cx="50" cy="60" rx="12" ry="15" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+    +`<ellipse cx="150" cy="60" rx="12" ry="15" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
+  s+=`<ellipse cx="100" cy="54" rx="50" ry="45" fill="${c}" stroke="${INK}" stroke-width="4"/>`;
+  s+=`<ellipse cx="100" cy="66" rx="30" ry="29" fill="#fff" opacity=".2"/>`;       // belly
+  s+=`<ellipse cx="80" cy="34" rx="22" ry="12" fill="#fff" opacity=".22"/>`;       // top sheen
+  s+=`<ellipse cx="100" cy="94" rx="42" ry="14" fill="${k}" opacity=".15"/>`;      // bottom shadow
   switch(a.tex){
     case"spot":  s+=`<circle cx="84" cy="44" r="6" fill="${k}"/><circle cx="116" cy="56" r="7" fill="${k}"/><circle cx="98" cy="70" r="5" fill="${k}"/><circle cx="120" cy="36" r="4" fill="${k}"/>`;break;
-    case"spike": for(let i=0;i<7;i++){const ang=Math.PI*(0.15+0.7*i/6);const x=100-46*Math.cos(ang),y=52-42*Math.sin(ang);const x2=100-60*Math.cos(ang),y2=52-56*Math.sin(ang);s+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${k}" stroke-width="4" stroke-linecap="round"/>`;}break;
+    case"spike": for(let i=0;i<7;i++){const ang=Math.PI*(0.15+0.7*i/6);const x=100-48*Math.cos(ang),y=54-44*Math.sin(ang);const x2=100-62*Math.cos(ang),y2=54-58*Math.sin(ang);s+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${k}" stroke-width="4" stroke-linecap="round"/>`;}break;
     case"shell": s+=`<path d="M100 52 m0 -2 a18 18 0 1 1 -1 0 a11 11 0 1 0 1 6 a5 5 0 1 1 0 0" fill="none" stroke="${k}" stroke-width="4"/>`;break;
     case"sucker":s+=`<g fill="${k}">`;for(let r=0;r<3;r++)for(let cc=0;cc<3;cc++)s+=`<circle cx="${86+cc*14}" cy="${42+r*16}" r="3.2"/>`;s+=`</g>`;break;
     case"jelly": s+=`<g stroke="#fff" stroke-width="3" opacity=".5" fill="none"><line x1="86" y1="20" x2="86" y2="86"/><line x1="100" y1="16" x2="100" y2="90"/><line x1="114" y1="20" x2="114" y2="86"/></g>`;break;
-    case"fuzzy": {let f="";for(let i=0;i<14;i++){const ang=Math.PI*(i/13);const x=100-48*Math.cos(ang),y=52-44*Math.sin(ang);f+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} l3 -5 l3 5" stroke="${INK}" stroke-width="2.5" fill="none"/>`;}s+=f;break;}
+    case"fuzzy": {let f="";for(let i=0;i<15;i++){const ang=Math.PI*(i/14);const x=100-50*Math.cos(ang),y=54-45*Math.sin(ang);f+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} l3 -5 l3 5" stroke="${INK}" stroke-width="2.5" fill="none"/>`;}s+=f;break;}
   }
   return s;
 }
 function bottom(a){
   const c=a.col,k=a.acc;
-  let s=`<ellipse cx="100" cy="10" rx="34" ry="16" fill="${c}" stroke="${INK}" stroke-width="4"/>`; // connector
+  const pad="#ef9bb3";
+  let s=`<ellipse cx="100" cy="8" rx="36" ry="16" fill="${c}" stroke="${INK}" stroke-width="4"/>`   // connector to the body above
+    +`<ellipse cx="90" cy="4" rx="18" ry="6" fill="#fff" opacity=".18"/>`;
   switch(a.bot){
-    case"legs":   s+=`<path d="M78 16 C60 30 58 54 74 64 C66 66 64 60 66 54" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M122 16 C140 30 142 54 126 64 C134 66 136 60 134 54" fill="${c}" stroke="${INK}" stroke-width="4"/><ellipse cx="74" cy="66" rx="12" ry="6" fill="${k}" stroke="${INK}" stroke-width="3"/><ellipse cx="126" cy="66" rx="12" ry="6" fill="${k}" stroke="${INK}" stroke-width="3"/>`;break;
-    case"feet":   s+=`<ellipse cx="84" cy="40" rx="13" ry="22" fill="${c}" stroke="${INK}" stroke-width="4"/><ellipse cx="116" cy="40" rx="13" ry="22" fill="${c}" stroke="${INK}" stroke-width="4"/><ellipse cx="84" cy="56" rx="13" ry="7" fill="${k}"/><ellipse cx="116" cy="56" rx="13" ry="7" fill="${k}"/>`;break;
-    case"foxtail":s+=`<path d="M100 12 C150 14 168 50 120 76 C150 44 120 28 96 30 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M132 64 C150 50 150 36 138 30" stroke="${k}" stroke-width="9" fill="none" stroke-linecap="round"/>`;break;
-    case"cattail":s+=`<path d="M100 14 C150 18 160 60 124 64" fill="none" stroke="${c}" stroke-width="13" stroke-linecap="round"/><path d="M100 14 C150 18 160 60 124 64" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" opacity=".25"/>`;break;
-    case"pom":    s+=`<ellipse cx="80" cy="34" rx="11" ry="18" fill="${c}" stroke="${INK}" stroke-width="4"/><ellipse cx="120" cy="34" rx="11" ry="18" fill="${c}" stroke="${INK}" stroke-width="4"/><circle cx="100" cy="48" r="18" fill="#fff" stroke="${INK}" stroke-width="4"/>`;break;
-    case"tentacle":{for(let i=0;i<5;i++){const x=64+i*18;const dir=i%2?1:-1;s+=`<path d="M${x} 12 q${10*dir} 28 ${4*dir} 56 q${-8*dir} 14 ${2*dir} 22" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round"/>`;}break;}
+    case"legs":   s+=`<path d="M78 14 C58 28 56 52 76 62 C66 66 62 58 64 52" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+      +`<path d="M122 14 C142 28 144 52 124 62 C134 66 138 58 136 52" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+      +`<ellipse cx="74" cy="64" rx="14" ry="7" fill="${c}" stroke="${INK}" stroke-width="3"/><ellipse cx="126" cy="64" rx="14" ry="7" fill="${c}" stroke="${INK}" stroke-width="3"/>`
+      +`<ellipse cx="74" cy="65" rx="6" ry="3" fill="${pad}"/><ellipse cx="126" cy="65" rx="6" ry="3" fill="${pad}"/>`;break;
+    case"feet":   s+=[82,118].map(x=>`<ellipse cx="${x}" cy="42" rx="14" ry="22" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+      +`<ellipse cx="${x}" cy="50" rx="8" ry="6" fill="${pad}"/>`
+      +`<circle cx="${x-6}" cy="40" r="2.6" fill="${pad}"/><circle cx="${x}" cy="37" r="2.6" fill="${pad}"/><circle cx="${x+6}" cy="40" r="2.6" fill="${pad}"/>`).join('');break;
+    case"foxtail":s+=`<path d="M100 10 C152 12 172 52 118 78 C150 44 118 26 94 28 Z" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+      +`<path d="M120 74 C146 56 150 38 138 28" stroke="#fff" stroke-width="11" fill="none" stroke-linecap="round" opacity=".85"/>`;break;
+    case"cattail":s+=`<path d="M100 14 C150 18 162 58 124 64" fill="none" stroke="${c}" stroke-width="14" stroke-linecap="round"/>`
+      +`<path d="M104 18 C146 24 154 52 128 58" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".2"/>`;break;
+    case"pom":    s+=`<ellipse cx="80" cy="32" rx="12" ry="18" fill="${c}" stroke="${INK}" stroke-width="4"/><ellipse cx="120" cy="32" rx="12" ry="18" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+      +`<ellipse cx="80" cy="44" rx="7" ry="5" fill="${pad}"/><ellipse cx="120" cy="44" rx="7" ry="5" fill="${pad}"/>`
+      +`<circle cx="100" cy="46" r="19" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="93" cy="41" r="6" fill="#fff" stroke="${INK}" stroke-width="2" opacity=".5"/>`;break;
+    case"tentacle":{for(let i=0;i<5;i++){const x=64+i*18,dir=i%2?1:-1;s+=`<path d="M${x} 10 q${10*dir} 30 ${4*dir} 58 q${-8*dir} 14 ${2*dir} 24" fill="none" stroke="${c}" stroke-width="11" stroke-linecap="round"/>`;}
+      for(let i=0;i<5;i++){const x=64+i*18;s+=`<circle cx="${x+1}" cy="30" r="2" fill="${k}"/><circle cx="${x-1}" cy="50" r="2" fill="${k}"/>`;}break;}
     case"jellytail":{for(let i=0;i<7;i++){const x=58+i*15;s+=`<path d="M${x} 10 q${i%2?8:-8} 30 0 60 q${i%2?-6:6} 16 0 26" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" opacity=".85"/>`;}break;}
-    case"fin":    s+=`<path d="M100 12 C120 12 134 24 126 44 L150 70 L118 60 L100 78 L82 60 L50 70 L74 44 C66 24 80 12 100 12 Z" fill="${c}" stroke="${INK}" stroke-width="4"/>`;break;
-    case"foot":   s+=`<path d="M50 30 C70 14 130 14 150 30 C150 48 120 60 100 60 C80 60 50 48 50 30 Z" fill="${c}" stroke="${INK}" stroke-width="4"/><path d="M62 44 C80 52 120 52 138 44" stroke="${k}" stroke-width="3" fill="none" opacity=".6"/>`;break;
+    case"fin":    s+=`<path d="M100 10 C122 10 136 24 128 46 L152 72 L118 60 L100 80 L82 60 L48 72 L72 46 C64 24 78 10 100 10 Z" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+      +`<path d="M100 22 C112 22 120 32 116 46" stroke="#fff" stroke-width="4" fill="none" opacity=".35"/>`;break;
+    case"foot":   s+=`<path d="M50 30 C70 14 130 14 150 30 C150 48 120 60 100 60 C80 60 50 48 50 30 Z" fill="${c}" stroke="${INK}" stroke-width="4"/>`
+      +`<path d="M62 44 C80 52 120 52 138 44" stroke="${k}" stroke-width="3" fill="none" opacity=".6"/>`
+      +`<ellipse cx="80" cy="28" rx="20" ry="7" fill="#fff" opacity=".15"/>`;break;
   }
   return s;
 }
 const BUILDERS={head,body,tail:bottom};
 
-function tileSVG(part,i){return `<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">${BUILDERS[part](ANIMALS[i])}</svg>`;}
+function tileSVG(part,i){return `<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg"><g stroke-linejoin="round" stroke-linecap="round">${BUILDERS[part](ANIMALS[i])}</g></svg>`;}
 function compositeSVG(idx){
-  return `<svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">`
+  return `<svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg"><g stroke-linejoin="round" stroke-linecap="round">`
     +`<g>${head(ANIMALS[idx.head])}</g>`
     +`<g transform="translate(0,100)">${body(ANIMALS[idx.body])}</g>`
-    +`<g transform="translate(0,200)">${bottom(ANIMALS[idx.tail])}</g></svg>`;
+    +`<g transform="translate(0,200)">${bottom(ANIMALS[idx.tail])}</g></g></svg>`;
 }
 
 /* ---------- app state + reels ---------- */
