@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Huedini · Random Color Palette Generator</title>
+  <meta name="description" content="Conjure a fresh, beautiful color palette with one click. Lock the ones you love, click to copy." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="locked">
+  <!-- Password gate. Shown by default (body.locked); JS removes the lock
+       once the right password is entered or remembered from a prior visit.
+       NOTE: this is client-side only — obfuscation, not real security. -->
+  <div id="gate" class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+    <form id="gate-form" class="gate-box" autocomplete="on">
+      <div class="gate-mark" aria-hidden="true">🔐</div>
+      <h2 id="gate-title">This preview is locked</h2>
+      <p class="gate-sub">Enter the password to continue.</p>
+      <input id="gate-input" class="gate-input" type="password"
+             placeholder="Password" aria-label="Password"
+             autocomplete="current-password" autofocus />
+      <button type="submit" class="gate-btn">Unlock</button>
+      <p id="gate-error" class="gate-error" role="alert" aria-live="polite"></p>
+    </form>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🪄</span>
+      <h1>Huedini</h1>
+    </div>
+    <p class="tagline">Press <kbd>Space</kbd> for a little color magic</p>
+  </header>
+
+  <main id="palette" class="palette" aria-label="Color palette">
+    <!-- swatches injected by script.js -->
+  </main>
+
+  <div class="dock">
+    <button id="generate" class="generate-btn" type="button">
+      <span class="btn-icon" aria-hidden="true">✦</span>
+      <span>Conjure palette</span>
+    </button>
+    <p class="hint">Click a swatch to copy · Tap the lock to keep a color</p>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Floating panel: recent history + saved palettes, shown as thumbnails. -->
+  <button id="tray-toggle" class="tray-toggle" type="button"
+          aria-label="Show palette history" aria-expanded="false">
+    <span aria-hidden="true">🗂️</span>
+  </button>
+
+  <aside id="tray" class="tray" aria-label="Palette history and saved palettes">
+    <div class="tray-head">
+      <h2>Palettes</h2>
+      <button id="tray-close" class="tray-close" type="button" aria-label="Close panel">✕</button>
+    </div>
+    <div class="tray-body">
+      <section class="tray-section">
+        <h3>Recent <span class="tray-hint">last 10</span></h3>
+        <div id="recent-list" class="tray-list"></div>
+      </section>
+      <section class="tray-section">
+        <h3>Saved</h3>
+        <div id="saved-list" class="tray-list"></div>
+      </section>
+    </div>
+  </aside>
+
+  <script src="script.js"></script>
+</body>
+</html>

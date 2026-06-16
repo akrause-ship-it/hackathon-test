@@ -1,0 +1,11 @@
+# Vercel
+.vercel
+
+# Claude Code local/personal settings (machine-specific, not for sharing)
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
