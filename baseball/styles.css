@@ -1,0 +1,167 @@
+/* Stat Workshop — clean broadcast shell around a retro 8-bit core.
+ * Fonts are loaded via <link> in index.html. */
+
+:root {
+  --field: #3d7a3d; --field-dk: #326632; --dirt: #c08a4a; --dirt-dk: #a8753a;
+  --chalk: #f4f1e8; --ink: #10161f; --panel: #172234; --panel-2: #1f3047;
+  --line: #2d4159; --accent: #ffd23f; --accent-2: #41c6ff;
+  --x: #ff5a5a; --o: #41c6ff; --txt: #e8eef6; --muted: #8aa0bd;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--ink); color: var(--txt); font-family: 'Barlow', sans-serif;
+  min-height: 100vh; padding: 18px;
+}
+.shell { max-width: 1140px; margin: 0 auto; }
+
+/* scoreboard header */
+header {
+  background: linear-gradient(180deg, #1c2942, #141d2e); border: 2px solid var(--panel-2);
+  border-radius: 12px; padding: 16px 20px; display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 16px; gap: 16px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.logo { font-family: 'Press Start 2P'; font-size: 15px; color: var(--accent); line-height: 1.5; text-shadow: 2px 2px 0 #000; }
+.brand small {
+  font-family: 'Barlow Condensed'; font-weight: 600; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--muted); font-size: 12px; display: block; margin-top: 4px;
+}
+.head-right { text-align: right; }
+.season {
+  font-family: 'Barlow Condensed'; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .1em; font-size: 14px; background: var(--accent); color: #1a1a1a;
+  padding: 6px 12px; border-radius: 6px; display: inline-block;
+}
+.live { display: inline-block; width: 8px; height: 8px; background: #39d98a; border-radius: 50%; margin-right: 6px; animation: pulse 1.4s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.demo-note { font-size: 11px; color: var(--muted); font-family: 'Barlow Condensed'; letter-spacing: .05em; margin-top: 6px; }
+
+/* tabs */
+.tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.tab {
+  flex: 1; background: var(--panel); border: 2px solid var(--panel-2); border-radius: 10px;
+  padding: 12px; font-family: 'Barlow Condensed'; font-weight: 800; font-size: 18px;
+  text-transform: uppercase; letter-spacing: .08em; cursor: pointer; color: var(--muted); transition: .15s;
+}
+.tab:hover { border-color: var(--accent-2); color: var(--txt); }
+.tab.on { background: var(--accent-2); color: #08263a; border-color: var(--accent-2); }
+.tab:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* single full-width workshop card (the ballpark is the centerpiece) */
+.card { background: var(--panel); border: 2px solid var(--panel-2); border-radius: 12px; padding: 16px; }
+.card h3 {
+  font-family: 'Barlow Condensed'; text-transform: uppercase; letter-spacing: .14em;
+  font-size: 13px; color: var(--muted); margin-bottom: 12px;
+}
+
+/* workshop controls */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.chip {
+  background: var(--panel-2); border: 2px solid transparent; border-radius: 20px;
+  padding: 8px 14px; font-family: 'Barlow Condensed'; font-weight: 700; font-size: 15px;
+  cursor: pointer; color: var(--txt); letter-spacing: .04em; transition: .15s;
+}
+.chip:hover { border-color: var(--accent); }
+.chip.on { background: var(--accent); color: #1a1a1a; }
+.chip:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 2px; }
+
+/* prominent stat title (spells out the acronym) */
+.stat-title {
+  display: flex; align-items: center; gap: 14px; margin: 4px 0 14px;
+}
+.st-abbr {
+  font-family: 'Press Start 2P'; font-size: 20px; color: #08263a;
+  background: var(--accent); padding: 10px 12px; border-radius: 8px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, .3); line-height: 1;
+}
+.st-full {
+  font-family: 'Barlow Condensed'; font-weight: 800; font-size: 40px;
+  text-transform: uppercase; letter-spacing: .02em; line-height: 1; color: var(--txt);
+}
+@media (max-width: 560px) {
+  .st-full { font-size: 30px; }
+  .st-abbr { font-size: 16px; }
+}
+
+/* 8-bit ballpark scene */
+.fieldwrap { position: relative; }
+#scene {
+  width: 100%; display: block; aspect-ratio: 64 / 40;
+  background: #0d1420; border-radius: 10px; border: 2px solid var(--panel-2);
+  image-rendering: pixelated; image-rendering: crisp-edges;
+}
+/* broadcast lower-third over the scene */
+.jumbotron {
+  position: absolute; left: 10px; bottom: 10px; right: 10px;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+  padding: 8px 12px; border-radius: 8px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(13,20,32,0), rgba(13,20,32,.82));
+}
+.jt-name { font-family: 'Barlow Condensed'; font-weight: 800; font-size: 24px; line-height: 1; text-shadow: 1px 1px 0 #000; }
+.jt-team { color: var(--accent-2); font-weight: 700; font-size: 15px; letter-spacing: .08em; margin-left: 4px; }
+.jt-stat { text-align: right; font-family: 'Press Start 2P'; font-size: 18px; color: var(--accent); text-shadow: 2px 2px 0 #000; }
+.jt-lab { display: block; font-family: 'Barlow Condensed'; font-weight: 700; font-size: 11px; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; margin-top: 6px; }
+.runbtn {
+  position: absolute; top: 10px; right: 10px; background: var(--x); color: #fff; border: none;
+  border-radius: 8px; padding: 8px 14px; font-family: 'Barlow Condensed'; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .08em; cursor: pointer; font-size: 13px;
+}
+.runbtn:hover { filter: brightness(1.1); }
+.runbtn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* explainer */
+.explain { margin-top: 14px; display: grid; gap: 10px; }
+.block { background: var(--panel-2); border-radius: 10px; padding: 12px 14px; }
+.block .lab { font-family: 'Barlow Condensed'; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; font-size: 11px; color: var(--accent-2); margin-bottom: 4px; }
+.block.elite .lab { color: var(--accent); }
+.block p { font-size: 15px; line-height: 1.45; }
+.block b { color: var(--accent); }
+.elite-ref { margin-top: 8px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+.elite-ref:empty { display: none; }
+
+/* bar chart */
+.chart { width: 100%; margin: 2px 0 14px; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.cbar { fill: var(--accent-2); opacity: .5; cursor: pointer; transition: opacity .12s; }
+.cbar:hover { opacity: .8; }
+.cbar.on { fill: var(--accent); opacity: 1; }
+.cval { fill: var(--muted); font: 700 7px 'Barlow Condensed', sans-serif; text-anchor: middle; }
+.cval.on { fill: var(--accent); }
+.crank { fill: var(--muted); font: 600 7px 'Barlow Condensed', sans-serif; text-anchor: middle; }
+.cax { fill: var(--muted); font: 600 7px 'Barlow Condensed', sans-serif; text-anchor: start; }
+.cref { fill: var(--accent); font: 700 6.5px 'Barlow Condensed', sans-serif; text-anchor: start; }
+.chart-cap { margin-top: 4px; font-size: 12px; color: var(--muted); text-align: right; letter-spacing: .03em; }
+
+/* picker */
+.picker { margin-top: 14px; }
+.plist { display: grid; gap: 5px; max-height: 230px; overflow: auto; }
+.prow {
+  display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px;
+  background: var(--panel-2); border: 2px solid transparent; border-radius: 8px; padding: 8px 12px;
+  cursor: pointer; transition: .12s;
+}
+.prow:hover { border-color: var(--accent-2); }
+.prow.on { border-color: var(--accent); background: #243a26; }
+.prow:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 2px; }
+.rank { font-family: 'Press Start 2P'; font-size: 11px; color: var(--muted); }
+.prow.on .rank { color: var(--accent); }
+.prow .nm { font-family: 'Barlow Condensed'; font-weight: 700; font-size: 17px; }
+.prow .tm { color: var(--muted); font-size: 13px; margin-left: 6px; font-weight: 500; }
+.prow .vl { font-family: 'Barlow Condensed'; font-weight: 800; font-size: 18px; color: var(--accent-2); }
+.prow.on .vl { color: var(--accent); }
+
+/* notice (loading / fallback / error) */
+.notice {
+  background: var(--panel-2); border: 2px solid var(--line); border-radius: 8px;
+  padding: 10px 14px; margin-bottom: 8px; font-size: 14px; color: var(--muted);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.notice.error { border-color: var(--x); color: var(--txt); }
+.retrybtn {
+  background: var(--accent-2); color: #08263a; border: none; border-radius: 6px;
+  padding: 6px 12px; font-family: 'Barlow Condensed'; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .06em; cursor: pointer; font-size: 13px;
+}
+.retrybtn:hover { filter: brightness(1.08); }
+
+.copyright { color: var(--muted); font-size: 11px; text-align: center; margin-top: 16px; opacity: .7; }

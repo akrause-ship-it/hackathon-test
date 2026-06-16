@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stat Workshop — MLB Explainer</title>
+  <meta name="description" content="Pick a stat, pick a current MLB leader, and watch an 8-bit ballpark animate the play that the stat measures — explained in plain English with live data from the official MLB Stats API." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚾</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand">
+      <div class="logo">STAT<br>WORKSHOP</div>
+      <small>MLB Explainer · 8-bit Ballpark</small>
+    </div>
+    <div class="head-right">
+      <div class="season"><span class="live"></span><span id="season-label">—</span></div>
+      <div class="demo-note" id="feed-note">live · statsapi.mlb.com</div>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs" role="tablist" aria-label="Stat category group">
+    <button class="tab on" data-g="hitting" role="tab" aria-selected="true">Offense</button>
+    <button class="tab" data-g="pitching" role="tab" aria-selected="false">Pitching</button>
+    <button class="tab" data-g="fielding" role="tab" aria-selected="false">Fielding</button>
+  </div>
+
+  <div class="card">
+    <h3>Pick a stat</h3>
+    <div class="chips" id="chips"></div>
+
+    <!-- Prominent full-name title for the selected stat (spells out the acronym). -->
+    <div class="stat-title">
+      <span class="st-abbr" id="st-abbr">HR</span>
+      <span class="st-full" id="st-full">Home Runs</span>
+    </div>
+
+    <!-- The 8-bit ballpark — the centerpiece. Player info rides as a lower-third. -->
+    <div class="fieldwrap">
+      <canvas id="scene" width="640" height="400" role="img"
+              aria-label="Animated 8-bit ballpark showing the selected play"></canvas>
+      <button class="runbtn" id="run" type="button">▶ Run the play</button>
+      <div class="jumbotron">
+        <div class="jt-name"><span id="pname">—</span> <span class="jt-team" id="pteam">—</span></div>
+        <div class="jt-stat"><span id="pstat">—</span><span class="jt-lab" id="pstatlab">—</span></div>
+      </div>
+    </div>
+
+    <div class="explain">
+      <div class="block"><div class="lab">What it means</div><p id="ex-mean"></p></div>
+      <div class="block"><div class="lab">The play</div><p id="ex-play"></p></div>
+      <div class="block elite"><div class="lab">Rank &amp; why elite</div><p id="ex-elite"></p><p class="elite-ref" id="ex-prev"></p></div>
+    </div>
+
+    <div class="picker">
+      <h3 style="margin-top:6px">Top 10 — <span id="picker-season">current season</span></h3>
+      <div id="notice" class="notice" hidden></div>
+      <div id="chart" class="chart" aria-label="Bar chart of the top 10 values"></div>
+      <div class="plist" id="plist" role="listbox" aria-label="Top players"></div>
+    </div>
+  </div>
+
+  <p class="copyright">Data: official MLB Stats API. Educational, non-commercial project. © MLB Advanced Media, L.P.</p>
+</div>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="scene.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

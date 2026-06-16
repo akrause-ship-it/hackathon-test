@@ -3,76 +3,116 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Huedini · Random Color Palette Generator</title>
-
-  <meta name="description" content="Conjure a fresh, beautiful color palette with one click. Lock the ones you love, click to copy." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>" />
+  <title>ParkBack · SpotHero → Gusto Reimbursements</title>
+  <meta name="description" content="Automatically turn SpotHero parking transactions into Gusto reimbursement drafts. Review, approve, done — with a $100/month cap." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🅿️</text></svg>" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="locked">
-  <!-- Password gate. Shown by default (body.locked); JS removes the lock
-       once the right password is entered or remembered from a prior visit.
-       NOTE: this is client-side only — obfuscation, not real security. -->
-  <div id="gate" class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
-    <form id="gate-form" class="gate-box" autocomplete="on">
-      <div class="gate-mark" aria-hidden="true">🔐</div>
-      <h2 id="gate-title">This preview is locked</h2>
-      <p class="gate-sub">Enter the password to continue.</p>
-      <input id="gate-input" class="gate-input" type="password"
-             placeholder="Password" aria-label="Password"
-             autocomplete="current-password" autofocus />
-      <button type="submit" class="gate-btn">Unlock</button>
-      <p id="gate-error" class="gate-error" role="alert" aria-live="polite"></p>
-    </form>
-  </div>
-
+<body>
   <header class="topbar">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">🪄</span>
+      <span class="brand-mark" aria-hidden="true">🅿️</span>
       <div class="brand-text">
-        <h1>Huedini</h1>
-        <p class="byline">by André Krause</p>
+        <h1>ParkBack</h1>
+        <p class="byline">SpotHero → Gusto · by André Krause</p>
       </div>
     </div>
-    <p class="tagline">Press <kbd>Space</kbd> for a little color magic</p>
+
+    <div class="user-switch">
+      <label for="user-select" class="visually-hidden">Active user</label>
+      <span class="user-avatar" id="user-avatar" aria-hidden="true">A</span>
+      <select id="user-select" class="user-select" aria-label="Switch user"></select>
+    </div>
   </header>
 
-  <main id="palette" class="palette" aria-label="Color palette">
-    <!-- swatches injected by script.js -->
-  </main>
-
-  <div class="dock">
-    <button id="generate" class="generate-btn" type="button">
-      <span class="btn-icon" aria-hidden="true">✦</span>
-      <span>Conjure palette</span>
-    </button>
-    <p class="hint">Click a swatch to copy · Tap the lock to keep a color</p>
+  <!-- Demo banner: this is a prototype with mocked SpotHero/Gusto APIs. -->
+  <div class="demo-note" role="note">
+    <strong>Prototype</strong> — SpotHero &amp; Gusto APIs are simulated. The full
+    workflow, $100/month cap, and approvals are real and run in your browser.
   </div>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <main class="layout">
+    <!-- LEFT: connections + cap + actions -->
+    <section class="rail" aria-label="Account and controls">
+      <div class="card connections">
+        <h2>Connections</h2>
+        <button id="conn-spothero" class="conn-btn" type="button" data-svc="spothero">
+          <span class="conn-logo" aria-hidden="true">🚗</span>
+          <span class="conn-text">
+            <span class="conn-name">SpotHero</span>
+            <span class="conn-state">Not connected</span>
+          </span>
+          <span class="conn-dot" aria-hidden="true"></span>
+        </button>
+        <button id="conn-gusto" class="conn-btn" type="button" data-svc="gusto">
+          <span class="conn-logo" aria-hidden="true">🅖</span>
+          <span class="conn-text">
+            <span class="conn-name">Gusto</span>
+            <span class="conn-state">Not connected</span>
+          </span>
+          <span class="conn-dot" aria-hidden="true"></span>
+        </button>
+      </div>
 
-  <!-- Floating panel: recent history + saved palettes, shown as thumbnails. -->
-  <button id="tray-toggle" class="tray-toggle" type="button"
-          aria-label="Show palette history" aria-expanded="false">
-    <span aria-hidden="true">🗂️</span>
+      <div class="card cap">
+        <div class="cap-head">
+          <h2>Monthly cap</h2>
+          <span id="cap-month" class="cap-month"></span>
+        </div>
+        <div class="cap-meter" role="img" aria-label="Monthly reimbursement usage">
+          <div id="cap-fill" class="cap-fill"></div>
+        </div>
+        <p class="cap-numbers">
+          <strong id="cap-used">$0.00</strong>
+          <span>of $100.00 submitted</span>
+        </p>
+        <p id="cap-status" class="cap-status"></p>
+      </div>
+
+      <div class="card actions">
+        <h2>SpotHero activity</h2>
+        <p class="muted">Simulate the background poller finding new parking charges.</p>
+        <button id="poll-btn" class="primary-btn" type="button">
+          <span aria-hidden="true">🔄</span> Check for new transactions
+        </button>
+        <button id="poll-many" class="ghost-btn" type="button">Drop a busy week (3–4)</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: the work -->
+    <section class="board" aria-label="Reimbursements">
+      <nav class="tabs" role="tablist" aria-label="Reimbursement views">
+        <button class="tab is-active" role="tab" data-tab="drafts" aria-selected="true">
+          Drafts <span id="count-drafts" class="pill">0</span>
+        </button>
+        <button class="tab" role="tab" data-tab="held" aria-selected="false">
+          Held <span id="count-held" class="pill">0</span>
+        </button>
+        <button class="tab" role="tab" data-tab="submitted" aria-selected="false">
+          Submitted <span id="count-submitted" class="pill">0</span>
+        </button>
+      </nav>
+
+      <div id="panel-drafts" class="panel" role="tabpanel"></div>
+      <div id="panel-held" class="panel" role="tabpanel" hidden></div>
+      <div id="panel-submitted" class="panel" role="tabpanel" hidden></div>
+    </section>
+  </main>
+
+  <!-- Notification feed (bell) -->
+  <button id="bell" class="bell" type="button" aria-label="Notifications" aria-expanded="false">
+    <span aria-hidden="true">🔔</span>
+    <span id="bell-badge" class="bell-badge" hidden>0</span>
   </button>
-
-  <aside id="tray" class="tray" aria-label="Palette history and saved palettes">
-    <div class="tray-head">
-      <h2>Palettes</h2>
-      <button id="tray-close" class="tray-close" type="button" aria-label="Close panel">✕</button>
+  <aside id="notif-panel" class="notif-panel" aria-label="Notifications" hidden>
+    <div class="notif-head">
+      <h2>Notifications</h2>
+      <button id="notif-clear" class="link-btn" type="button">Mark all read</button>
     </div>
-    <div class="tray-body">
-      <section class="tray-section">
-        <h3>Recent <span class="tray-hint">last 10</span></h3>
-        <div id="recent-list" class="tray-list"></div>
-      </section>
-      <section class="tray-section">
-        <h3>Saved</h3>
-        <div id="saved-list" class="tray-list"></div>
-      </section>
-    </div>
+    <div id="notif-list" class="notif-list"></div>
   </aside>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="script.js"></script>
 </body>

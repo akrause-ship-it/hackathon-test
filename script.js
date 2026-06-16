@@ -1,311 +1,491 @@
-// Huedini — a tiny color conjurer.
-// Palettes are built with color theory so they actually look good,
-// instead of five random hex codes fighting each other.
+/* ParkBack — SpotHero → Gusto reimbursement automation (prototype)
+ *
+ * The SpotHero poller and the Gusto submission API are MOCKED (see the
+ * `mockSpotHero` and `mockGusto` objects). Everything else is the real
+ * workflow: ingest → draft → notify → approve → submit, plus a hard
+ * $100/calendar-month cap with pause/resume. State persists per user in
+ * localStorage, so each user operates independently (spec: multi-user).
+ */
 
-const SIZE = 5;
-const paletteEl = document.getElementById("palette");
-const generateBtn = document.getElementById("generate");
-const toastEl = document.getElementById("toast");
+'use strict';
 
-// Track lock state + current color per slot.
-const slots = Array.from({ length: SIZE }, () => ({ hex: "#000000", locked: false }));
+const MONTHLY_CAP = 100;            // dollars, per user, per calendar month
+const STORE_KEY = 'parkback.v1';
 
-// Palette memory, persisted in this browser. loadList is hoisted (defined below).
-const HISTORY_KEY = "huedini-history";
-const SAVED_KEY = "huedini-saved";
-const MAX_HISTORY = 10;
-let recentPalettes = loadList(HISTORY_KEY);
-let savedPalettes = loadList(SAVED_KEY);
-
-/* ---------- color helpers ---------- */
-function hslToHex(h, s, l) {
-  s /= 100; l /= 100;
-  const k = (n) => (n + h / 30) % 12;
-  const a = s * Math.min(l, 1 - l);
-  const f = (n) => {
-    const color = l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-    return Math.round(255 * color).toString(16).padStart(2, "0");
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
-
-// Relative luminance → decide whether text should be light or dark.
-function isLight(hex) {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-  return L > 0.5;
-}
-
-const rand = (min, max) => Math.random() * (max - min) + min;
-const wrap = (h) => ((h % 360) + 360) % 360;
-
-// A grab-bag of harmony schemes — picked at random each conjure for variety.
-const SCHEMES = [
-  { name: "analogous",     offsets: [-40, -20, 0, 20, 40] },
-  { name: "complementary", offsets: [0, 30, 180, 200, 160] },
-  { name: "triadic",       offsets: [0, 120, 240, 60, 300] },
-  { name: "split",         offsets: [0, 150, 210, 30, 330] },
-  { name: "monochrome",    offsets: [0, 0, 0, 0, 0] },
+/* ----- Users (each connects their own SpotHero + Gusto) ----- */
+const USERS = [
+  { id: 'andre',  name: 'André Krause' },
+  { id: 'sam',    name: 'Sam Rivera' },
+  { id: 'priya',  name: 'Priya Patel' },
 ];
 
-function buildPalette() {
-  const scheme = SCHEMES[Math.floor(Math.random() * SCHEMES.length)];
-  const baseHue = rand(0, 360);
-  const baseSat = rand(55, 85);
+/* SpotHero venues used to fabricate realistic transactions. */
+const VENUES = [
+  { name: 'Millennium Park Garage',        city: 'Chicago, IL',       lo: 14, hi: 28 },
+  { name: 'SP+ — 200 N LaSalle',           city: 'Chicago, IL',       lo: 18, hi: 34 },
+  { name: 'Impark — Financial District',   city: 'San Francisco, CA', lo: 22, hi: 45 },
+  { name: 'LAZ Parking — Midtown',         city: 'New York, NY',      lo: 28, hi: 55 },
+  { name: 'Premier — Fenway Lot B',        city: 'Boston, MA',        lo: 16, hi: 30 },
+  { name: 'ABM — Pioneer Square',          city: 'Seattle, WA',       lo: 12, hi: 24 },
+];
 
-  return scheme.offsets.map((offset, i) => {
-    const hue = wrap(baseHue + offset);
-    // Stagger lightness so swatches read as a gradient, not a blur.
-    const light = scheme.name === "monochrome"
-      ? 22 + i * 15
-      : rand(38, 72);
-    const sat = scheme.name === "monochrome"
-      ? baseSat
-      : Math.min(95, baseSat + rand(-12, 12));
-    return hslToHex(hue, sat, light);
+/* =========================================================================
+ * Mock external services
+ * ===================================================================== */
+
+let txnSeq = Date.now() % 100000; // monotonic-ish id source for the demo
+
+const mockSpotHero = {
+  /* Pretend to hit GET /v1/transactions and return `n` brand-new charges. */
+  fetchNewTransactions(n = 1) {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const v = VENUES[Math.floor(Math.random() * VENUES.length)];
+      const amount = round2(v.lo + Math.random() * (v.hi - v.lo));
+      const when = new Date();
+      when.setHours(8 + Math.floor(Math.random() * 10), Math.floor(Math.random() * 60), 0, 0);
+      const id = `SH-${++txnSeq}`;
+      out.push({
+        id,
+        date: when.toISOString(),
+        venue: v.name,
+        city: v.city,
+        amount,
+        confirmation: id.replace('SH-', 'CONF'),
+        receiptUrl: `https://spothero.com/receipts/${id}`, // simulated
+      });
+    }
+    return out;
+  },
+};
+
+const mockGusto = {
+  /* Pretend to POST a reimbursement to Gusto. Returns an external id. */
+  submitReimbursement(draft) {
+    return { gustoId: `GU-${draft.txn.id.replace('SH-', '')}`, status: 'submitted' };
+  },
+};
+
+/* =========================================================================
+ * Persistent state (per user)
+ * ===================================================================== */
+
+function blankUserState() {
+  return {
+    connections: { spothero: false, gusto: false },
+    drafts: [],      // awaiting approval
+    held: [],        // arrived while capped — eligible next month
+    submitted: [],   // sent to Gusto
+    notifications: [],
+    seenTxnIds: [],   // idempotency: never draft the same SpotHero txn twice
+  };
+}
+
+function loadStore() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (raw && raw.users) return raw;
+  } catch { /* ignore corrupt store */ }
+  const fresh = { activeUser: USERS[0].id, users: {} };
+  USERS.forEach(u => { fresh.users[u.id] = blankUserState(); });
+  return fresh;
+}
+
+let store = loadStore();
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+function state() { return store.users[store.activeUser]; }
+
+/* =========================================================================
+ * Helpers
+ * ===================================================================== */
+
+const $ = sel => document.querySelector(sel);
+const round2 = n => Math.round(n * 100) / 100;
+const money = n => `$${n.toFixed(2)}`;
+const monthKey = iso => iso.slice(0, 7);            // "2026-06"
+const thisMonth = () => new Date().toISOString().slice(0, 7);
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleString(undefined, {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
   });
 }
 
-/* ---------- rendering ---------- */
-function render() {
-  paletteEl.innerHTML = "";
-  slots.forEach((slot, i) => {
-    const light = isLight(slot.hex);
-    // A div (not a button) so the lock button can nest inside it validly.
-    const swatch = document.createElement("div");
-    swatch.className = "swatch";
-    swatch.setAttribute("role", "button");
-    swatch.setAttribute("tabindex", "0");
-    swatch.style.background = slot.hex;
-    swatch.style.color = light ? "#10100f" : "#ffffff";
-    swatch.style.animationDelay = `${i * 60}ms`;
-    swatch.setAttribute("aria-label", `Copy ${slot.hex}`);
-
-    swatch.innerHTML = `
-      <button class="lock ${slot.locked ? "is-locked" : ""}" type="button"
-              aria-label="${slot.locked ? "Unlock color" : "Lock color"}"
-              aria-pressed="${slot.locked}">
-        ${slot.locked ? "🔒" : "🔓"}
-      </button>
-      <span class="swatch-info">
-        <span class="hex">${slot.hex}</span>
-        <span class="copy-label">Click to copy</span>
-      </span>`;
-
-    swatch.addEventListener("click", () => copyColor(slot.hex));
-    swatch.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        copyColor(slot.hex);
-      }
-    });
-
-    swatch.querySelector(".lock").addEventListener("click", (e) => {
-      e.stopPropagation();
-      slot.locked = !slot.locked;
-      render();
-    });
-
-    paletteEl.appendChild(swatch);
-  });
+/* Sum of reimbursements that COUNT against the cap this month.
+ * Decision (spec Q5): the cap counts submitted reimbursements only. */
+function submittedThisMonth() {
+  const m = thisMonth();
+  return round2(state().submitted
+    .filter(r => monthKey(r.txn.date) === m)
+    .reduce((s, r) => s + r.txn.amount, 0));
 }
 
-function generate() {
-  const fresh = buildPalette();
-  slots.forEach((slot, i) => {
-    if (!slot.locked) slot.hex = fresh[i];
+function remainingThisMonth() { return round2(MONTHLY_CAP - submittedThisMonth()); }
+function isCapped() { return submittedThisMonth() >= MONTHLY_CAP; }
+
+/* =========================================================================
+ * Notifications (push/text are simulated as in-app + toast)
+ * ===================================================================== */
+
+function notify(kind, text) {
+  state().notifications.unshift({
+    id: `n-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    kind, text, at: new Date().toISOString(), read: false,
   });
-  render();
-  recordHistory(slots.map((s) => s.hex));
+  save();
+  renderNotifications();
+  toast(text);
 }
 
-/* ---------- clipboard + toast ---------- */
 let toastTimer;
-function showToast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.add("show");
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1100);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
 }
 
-async function copyColor(hex) {
-  try {
-    await navigator.clipboard.writeText(hex);
-  } catch {
-    // Fallback for non-secure contexts.
-    const tmp = document.createElement("textarea");
-    tmp.value = hex;
-    document.body.appendChild(tmp);
-    tmp.select();
-    document.execCommand("copy");
-    tmp.remove();
-  }
-  showToast(`Copied ${hex}`);
-}
+/* =========================================================================
+ * Core workflow
+ * ===================================================================== */
 
-/* ---------- events ---------- */
-generateBtn.addEventListener("click", generate);
+/* Ingest new SpotHero transactions → create Gusto drafts (or hold if capped). */
+function ingest(n) {
+  const st = state();
+  if (!st.connections.spothero) { toast('Connect SpotHero first.'); return; }
+  if (!st.connections.gusto)   { toast('Connect Gusto first.');   return; }
 
-document.addEventListener("keydown", (e) => {
-  if (e.code === "Space" && e.target === document.body) {
-    e.preventDefault();
-    generate();
-  }
-});
+  const txns = mockSpotHero.fetchNewTransactions(n);
+  let drafted = 0, held = 0;
 
-/* ---------- palette memory: recent history + saved ---------- */
-const trayToggle = document.getElementById("tray-toggle");
-const trayClose = document.getElementById("tray-close");
-const tray = document.getElementById("tray");
-const recentList = document.getElementById("recent-list");
-const savedList = document.getElementById("saved-list");
+  txns.forEach(txn => {
+    if (st.seenTxnIds.includes(txn.id)) return;   // idempotency
+    st.seenTxnIds.push(txn.id);
 
-function loadList(key) {
-  try {
-    const data = JSON.parse(localStorage.getItem(key));
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
+    if (isCapped()) {
+      // Cap reached: hold the transaction for next month (spec: held, not dropped).
+      st.held.push({ txn, heldAt: new Date().toISOString() });
+      held++;
+      return;
+    }
 
-function persist() {
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(recentPalettes));
-    localStorage.setItem(SAVED_KEY, JSON.stringify(savedPalettes));
-  } catch {}
-}
+    st.drafts.push({
+      id: `d-${txn.id}`,
+      txn,
+      attachments: ['SpotHero receipt (PDF)', 'Date · Location · Amount'],
+      createdAt: new Date().toISOString(),
+      status: 'draft',
+    });
+    drafted++;
+  });
 
-const samePalette = (a, b) => a.join() === b.join();
+  save();
 
-// Record a freshly generated palette (most-recent first, capped at MAX_HISTORY).
-function recordHistory(palette) {
-  if (recentPalettes.length && samePalette(recentPalettes[0], palette)) return;
-  recentPalettes.unshift(palette.slice());
-  recentPalettes = recentPalettes.slice(0, MAX_HISTORY);
-  persist();
-  renderTray();
-}
+  if (drafted) notify('draft', `${drafted} reimbursement draft${drafted > 1 ? 's' : ''} ready to review.`);
+  if (held)    notify('cap', `Cap reached — ${held} transaction${held > 1 ? 's' : ''} held for next month.`);
+  if (!drafted && !held) toast('No new transactions found.');
 
-// Apply a stored palette back onto the swatches.
-function applyPalette(palette) {
-  slots.forEach((slot, i) => { slot.hex = palette[i]; });
   render();
-  showToast("Palette applied");
 }
 
-function savePalette(palette) {
-  if (savedPalettes.some((p) => samePalette(p, palette))) {
-    showToast("Already saved");
+function approveDraft(id) {
+  const st = state();
+  const i = st.drafts.findIndex(d => d.id === id);
+  if (i === -1) return;
+  const draft = st.drafts[i];
+
+  // Re-check the cap at approval time — earlier approvals may have hit it.
+  // Spec: no partials, so a transaction that crosses $100 is still submitted
+  // in full; the cap pauses everything *after* the line is crossed.
+  if (isCapped()) {
+    st.drafts.splice(i, 1);
+    st.held.push({ txn: draft.txn, heldAt: new Date().toISOString() });
+    save();
+    notify('cap', `Cap reached — ${money(draft.txn.amount)} draft held for next month.`);
+    render();
     return;
   }
-  savedPalettes.unshift(palette.slice());
-  persist();
-  renderTray();
-  showToast("Saved ★");
+
+  const res = mockGusto.submitReimbursement(draft);
+  st.drafts.splice(i, 1);
+  st.submitted.push({
+    ...draft,
+    status: 'submitted',
+    gustoId: res.gustoId,
+    submittedAt: new Date().toISOString(),
+  });
+  save();
+
+  notify('submit', `Submitted ${money(draft.txn.amount)} to Gusto (${res.gustoId}).`);
+
+  if (isCapped()) {
+    notify('cap', `Monthly cap of $100 reached. Reimbursements paused until next month.`);
+  }
+  render();
 }
 
-function removeSaved(index) {
-  savedPalettes.splice(index, 1);
-  persist();
-  renderTray();
+function rejectDraft(id) {
+  const st = state();
+  const i = st.drafts.findIndex(d => d.id === id);
+  if (i === -1) return;
+  st.drafts.splice(i, 1);
+  save();
+  toast('Draft rejected.');
+  render();
 }
 
-function thumbMarkup(palette) {
-  return palette.map((hex) => `<span style="background:${hex}"></span>`).join("");
+/* Held transaction → re-draft now (only valid once the month rolls / room frees). */
+function resumeHeld(txnId) {
+  const st = state();
+  const i = st.held.findIndex(h => h.txn.id === txnId);
+  if (i === -1) return;
+  if (isCapped()) { toast('Still capped this month.'); return; }
+  const { txn } = st.held.splice(i, 1)[0];
+  st.drafts.push({
+    id: `d-${txn.id}`, txn,
+    attachments: ['SpotHero receipt (PDF)', 'Date · Location · Amount'],
+    createdAt: new Date().toISOString(), status: 'draft',
+  });
+  save();
+  notify('draft', `Held transaction re-drafted: ${money(txn.amount)} at ${txn.venue}.`);
+  render();
 }
 
-function buildItem(palette, actionLabel, actionClass, onAction) {
-  const item = document.createElement("div");
-  item.className = "pal-item";
-  item.innerHTML = `
-    <button class="pal-thumb" type="button" title="Apply this palette"
-            aria-label="Apply palette ${palette.join(", ")}">${thumbMarkup(palette)}</button>
-    <button class="pal-act ${actionClass}" type="button">${actionLabel}</button>`;
-  item.querySelector(".pal-thumb").addEventListener("click", () => applyPalette(palette));
-  item.querySelector(".pal-act").addEventListener("click", onAction);
-  return item;
+/* =========================================================================
+ * Rendering
+ * ===================================================================== */
+
+function render() {
+  renderUser();
+  renderConnections();
+  renderCap();
+  renderLists();
+  renderNotifications();
 }
 
-function renderTray() {
-  recentList.innerHTML = "";
-  if (recentPalettes.length === 0) {
-    recentList.innerHTML = `<p class="tray-empty">Generate a palette to start your history.</p>`;
-  } else {
-    recentPalettes.forEach((palette) => {
-      recentList.appendChild(buildItem(palette, "★", "", () => savePalette(palette)));
+function renderUser() {
+  const sel = $('#user-select');
+  if (!sel.options.length) {
+    USERS.forEach(u => {
+      const o = document.createElement('option');
+      o.value = u.id; o.textContent = u.name;
+      sel.appendChild(o);
     });
   }
+  sel.value = store.activeUser;
+  const active = USERS.find(u => u.id === store.activeUser);
+  $('#user-avatar').textContent = active.name[0];
+}
 
-  savedList.innerHTML = "";
-  if (savedPalettes.length === 0) {
-    savedList.innerHTML = `<p class="tray-empty">No saved palettes yet. Tap ★ on any palette to keep it.</p>`;
+function renderConnections() {
+  const c = state().connections;
+  [['spothero', '#conn-spothero'], ['gusto', '#conn-gusto']].forEach(([svc, sel]) => {
+    const btn = $(sel);
+    const on = c[svc];
+    btn.classList.toggle('connected', on);
+    btn.querySelector('.conn-state').textContent = on ? 'Connected' : 'Not connected';
+  });
+}
+
+function renderCap() {
+  const used = submittedThisMonth();
+  const pct = Math.min(100, (used / MONTHLY_CAP) * 100);
+  const fill = $('#cap-fill');
+  fill.style.width = `${pct}%`;
+  fill.classList.toggle('warn', used >= 80 && used < 100);
+  fill.classList.toggle('over', used >= 100);
+
+  $('#cap-used').textContent = money(used);
+  $('#cap-month').textContent = new Date().toLocaleString(undefined, { month: 'long', year: 'numeric' });
+
+  const status = $('#cap-status');
+  if (isCapped()) {
+    status.textContent = '⛔ Cap reached — paused until next month. New transactions are held.';
+    status.className = 'cap-status capped';
   } else {
-    savedPalettes.forEach((palette, i) => {
-      savedList.appendChild(buildItem(palette, "✕", "pal-remove", () => removeSaved(i)));
+    status.textContent = `${money(remainingThisMonth())} of room left this month.`;
+    status.className = 'cap-status ok';
+  }
+}
+
+function renderLists() {
+  const st = state();
+  $('#count-drafts').textContent = st.drafts.length;
+  $('#count-held').textContent = st.held.length;
+  $('#count-submitted').textContent = st.submitted.length;
+
+  // Drafts
+  $('#panel-drafts').innerHTML = st.drafts.length
+    ? st.drafts.map(draftCard).join('')
+    : empty('No drafts right now.', 'Run the SpotHero poller to pull new parking charges.');
+
+  // Held
+  $('#panel-held').innerHTML = st.held.length
+    ? st.held.map(heldCard).join('')
+    : empty('Nothing held.', 'Transactions land here when the $100 cap is hit.');
+
+  // Submitted (newest first)
+  const subs = [...st.submitted].reverse();
+  $('#panel-submitted').innerHTML = subs.length
+    ? subs.map(submittedCard).join('')
+    : empty('Nothing submitted yet.', 'Approved drafts get pushed to Gusto and listed here.');
+}
+
+function txnMeta(txn) {
+  return `
+    <div class="txn">
+      <div class="txn-main">
+        <span class="txn-venue">${esc(txn.venue)}</span>
+        <span class="txn-city">${esc(txn.city)}</span>
+      </div>
+      <div class="txn-sub">
+        <span>${fmtDate(txn.date)}</span>
+        <span>·</span>
+        <a href="${esc(txn.receiptUrl)}" target="_blank" rel="noopener">Receipt</a>
+        <span>·</span>
+        <span>${esc(txn.confirmation)}</span>
+      </div>
+    </div>`;
+}
+
+function draftCard(d) {
+  return `
+  <article class="row">
+    <div class="row-amt">${money(d.txn.amount)}</div>
+    ${txnMeta(d.txn)}
+    <div class="row-tags">
+      ${d.attachments.map(a => `<span class="tag">📎 ${esc(a)}</span>`).join('')}
+    </div>
+    <div class="row-actions">
+      <button class="approve" data-approve="${d.id}">Approve &amp; submit</button>
+      <button class="reject" data-reject="${d.id}">Reject</button>
+    </div>
+  </article>`;
+}
+
+function heldCard(h) {
+  return `
+  <article class="row held">
+    <div class="row-amt">${money(h.txn.amount)}</div>
+    ${txnMeta(h.txn)}
+    <div class="row-actions">
+      <span class="held-note">Held — cap reached</span>
+      <button class="ghost-btn small" data-resume="${h.txn.id}">Re-draft</button>
+    </div>
+  </article>`;
+}
+
+function submittedCard(s) {
+  return `
+  <article class="row done">
+    <div class="row-amt">${money(s.txn.amount)}</div>
+    ${txnMeta(s.txn)}
+    <div class="row-actions">
+      <span class="gusto-id">✓ Gusto ${esc(s.gustoId)}</span>
+      <span class="muted small">${fmtDate(s.submittedAt)}</span>
+    </div>
+  </article>`;
+}
+
+function empty(title, sub) {
+  return `<div class="empty"><p class="empty-title">${esc(title)}</p><p class="muted">${esc(sub)}</p></div>`;
+}
+
+function renderNotifications() {
+  const list = state().notifications;
+  const unread = list.filter(n => !n.read).length;
+  const badge = $('#bell-badge');
+  badge.textContent = unread;
+  badge.hidden = unread === 0;
+
+  const icons = { draft: '📝', cap: '⛔', submit: '✅' };
+  $('#notif-list').innerHTML = list.length
+    ? list.slice(0, 30).map(n => `
+        <div class="notif ${n.read ? '' : 'unread'}">
+          <span class="notif-icon" aria-hidden="true">${icons[n.kind] || '🔔'}</span>
+          <div>
+            <p>${esc(n.text)}</p>
+            <time>${fmtDate(n.at)}</time>
+          </div>
+        </div>`).join('')
+    : `<p class="muted" style="padding:12px">No notifications yet.</p>`;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+/* =========================================================================
+ * Events
+ * ===================================================================== */
+
+// Connections (mock OAuth toggle)
+['#conn-spothero', '#conn-gusto'].forEach(sel => {
+  $(sel).addEventListener('click', () => {
+    const svc = $(sel).dataset.svc;
+    const c = state().connections;
+    c[svc] = !c[svc];
+    save();
+    renderConnections();
+    toast(c[svc]
+      ? `${svc === 'spothero' ? 'SpotHero' : 'Gusto'} connected.`
+      : `${svc === 'spothero' ? 'SpotHero' : 'Gusto'} disconnected.`);
+  });
+});
+
+$('#poll-btn').addEventListener('click', () => ingest(1));
+$('#poll-many').addEventListener('click', () => ingest(3 + Math.floor(Math.random() * 2)));
+
+// User switch
+$('#user-select').addEventListener('change', e => {
+  store.activeUser = e.target.value;
+  save();
+  render();
+});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.remove('is-active'); t.setAttribute('aria-selected', 'false');
     });
-  }
-
-  trayToggle.dataset.count = savedPalettes.length || "";
-}
-
-function toggleTray(force) {
-  const open = typeof force === "boolean" ? force : !tray.classList.contains("open");
-  tray.classList.toggle("open", open);
-  trayToggle.setAttribute("aria-expanded", String(open));
-}
-
-trayToggle.addEventListener("click", () => toggleTray());
-trayClose.addEventListener("click", () => toggleTray(false));
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && tray.classList.contains("open")) toggleTray(false);
+    tab.classList.add('is-active'); tab.setAttribute('aria-selected', 'true');
+    ['drafts', 'held', 'submitted'].forEach(name => {
+      $(`#panel-${name}`).hidden = name !== tab.dataset.tab;
+    });
+  });
 });
 
-renderTray();
+// Row actions (event delegation across panels)
+$('.board').addEventListener('click', e => {
+  const a = e.target.closest('[data-approve]');
+  const r = e.target.closest('[data-reject]');
+  const h = e.target.closest('[data-resume]');
+  if (a) approveDraft(a.dataset.approve);
+  if (r) rejectDraft(r.dataset.reject);
+  if (h) resumeHeld(h.dataset.resume);
+});
 
-// First palette on load (content stays hidden behind the gate until unlocked).
-generate();
-
-/* ---------- password gate ---------- */
-// Client-side only — keeps casual visitors out, not a real security boundary.
-const GATE_KEY = "huedini-unlocked";
-const PASSWORD = "preview2026";
-
-const gateForm = document.getElementById("gate-form");
-const gateInput = document.getElementById("gate-input");
-const gateError = document.getElementById("gate-error");
-const gateBox = document.querySelector(".gate-box");
-
-function unlock() {
-  document.body.classList.remove("locked");
-}
-
-// Remembered from a previous visit in this browser?
-let remembered = false;
-try { remembered = localStorage.getItem(GATE_KEY) === "true"; } catch {}
-
-if (remembered) {
-  unlock();
-} else {
-  gateInput.focus();
-}
-
-gateForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  if (gateInput.value === PASSWORD) {
-    try { localStorage.setItem(GATE_KEY, "true"); } catch {}
-    gateError.textContent = "";
-    unlock();
-  } else {
-    gateError.textContent = "Hmm, that's not quite right — try again.";
-    gateInput.value = "";
-    gateInput.focus();
-    // Restart the shake animation for a little nudge of feedback.
-    gateBox.classList.remove("shake");
-    void gateBox.offsetWidth;
-    gateBox.classList.add("shake");
+// Notifications panel
+$('#bell').addEventListener('click', () => {
+  const panel = $('#notif-panel');
+  const open = panel.hidden;
+  panel.hidden = !open;
+  $('#bell').setAttribute('aria-expanded', String(open));
+  if (open) {
+    state().notifications.forEach(n => { n.read = true; });
+    save();
+    renderNotifications();
   }
 });
+$('#notif-clear').addEventListener('click', () => {
+  state().notifications.forEach(n => { n.read = true; });
+  save();
+  renderNotifications();
+});
+
+// First paint
+render();

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stat Workshop — MLB Explainer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap');
+:root{
+  --field:#3d7a3d; --field-dk:#326632; --dirt:#c08a4a; --dirt-dk:#a8753a;
+  --chalk:#f4f1e8; --ink:#10161f; --panel:#172234; --panel-2:#1f3047;
+  --line:#2c4straw; --line:#2d4159; --accent:#ffd23f; --accent-2:#41c6ff;
+  --x:#ff5a5a; --o:#41c6ff; --txt:#e8eef6; --muted:#8aa0bd;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ink);color:var(--txt);font-family:'Barlow',sans-serif;
+  min-height:100vh;padding:18px}
+.shell{max-width:1140px;margin:0 auto}
+
+/* scoreboard header */
+header{background:linear-gradient(180deg,#1c2942,#141d2e);border:2px solid var(--panel-2);
+  border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{font-family:'Press Start 2P';font-size:15px;color:var(--accent);line-height:1.5;
+  text-shadow:2px 2px 0 #000}
+.brand small{font-family:'Barlow Condensed';font-weight:600;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);font-size:12px;display:block;margin-top:4px}
+.season{font-family:'Barlow Condensed';font-weight:800;text-transform:uppercase;
+  letter-spacing:.1em;font-size:14px;background:var(--accent);color:#1a1a1a;
+  padding:6px 12px;border-radius:6px}
+.live{display:inline-block;width:8px;height:8px;background:#39d98a;border-radius:50%;
+  margin-right:6px;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.demo-note{font-size:11px;color:var(--muted);font-family:'Barlow Condensed';letter-spacing:.05em}
+
+/* tabs */
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tab{flex:1;background:var(--panel);border:2px solid var(--panel-2);border-radius:10px;
+  padding:12px;font-family:'Barlow Condensed';font-weight:800;font-size:18px;
+  text-transform:uppercase;letter-spacing:.08em;cursor:pointer;color:var(--muted);
+  transition:.15s}
+.tab:hover{border-color:var(--accent-2);color:var(--txt)}
+.tab.on{background:var(--accent-2);color:#08263a;border-color:var(--accent-2)}
+
+/* main grid: 1/3 sprite, 2/3 workshop */
+.grid{display:grid;grid-template-columns:1fr 2fr;gap:16px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:2px solid var(--panel-2);border-radius:12px;padding:16px}
+.card h3{font-family:'Barlow Condensed';text-transform:uppercase;letter-spacing:.14em;
+  font-size:13px;color:var(--muted);margin-bottom:12px}
+
+/* sprite column */
+.spritebox{display:flex;flex-direction:column;align-items:center}
+.stage{width:100%;aspect-ratio:3/4;background:
+   linear-gradient(180deg,#bfe3ff 0%,#bfe3ff 55%,var(--field) 55%,var(--field-dk) 100%);
+  border:2px solid var(--panel-2);border-radius:10px;position:relative;overflow:hidden;
+  image-rendering:pixelated}
+.cloud{position:absolute;width:34px;height:12px;background:#fff;border-radius:8px;opacity:.85;
+  top:18%;left:-40px;animation:drift 9s linear infinite}
+.cloud:nth-child(2){top:30%;animation-duration:13s;animation-delay:2s;transform:scale(.7)}
+@keyframes drift{to{left:120%}}
+/* CSS pixel sprite via box-shadow grid */
+.sprite{position:absolute;left:50%;bottom:16%;transform:translateX(-50%);
+  width:8px;height:8px;image-rendering:pixelated;animation:idle 1.6s ease-in-out infinite}
+@keyframes idle{50%{transform:translateX(-50%) translateY(-3px)}}
+.sprite.swing{animation:swing .55s ease}
+.sprite.pitch{animation:pitch .6s ease}
+.sprite.field{animation:fieldjump .6s ease}
+@keyframes swing{0%{transform:translateX(-50%) rotate(0)}40%{transform:translateX(-50%) rotate(-14deg)}100%{transform:translateX(-50%) rotate(0)}}
+@keyframes pitch{0%{transform:translateX(-50%) rotate(0)}45%{transform:translateX(-58%) rotate(10deg)}100%{transform:translateX(-50%) rotate(0)}}
+@keyframes fieldjump{0%,100%{transform:translateX(-50%) translateY(0)}45%{transform:translateX(-50%) translateY(-22px)}}
+.bat{position:absolute;left:50%;bottom:18%;width:3px;height:26px;background:#a8753a;
+  transform-origin:bottom center;transform:translateX(14px) rotate(35deg);border-radius:2px;
+  transition:.1s}
+.playercard{margin-top:14px;text-align:center;width:100%}
+.pname{font-family:'Barlow Condensed';font-weight:800;font-size:26px;line-height:1}
+.pteam{color:var(--muted);font-family:'Barlow Condensed';font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;font-size:13px;margin-top:2px}
+.pstat{margin-top:10px;font-family:'Press Start 2P';font-size:22px;color:var(--accent)}
+.pstat small{display:block;font-family:'Barlow Condensed';font-size:12px;color:var(--muted);
+  letter-spacing:.14em;margin-top:8px;-webkit-font-smoothing:antialiased}
+
+/* workshop right side */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.chip{background:var(--panel-2);border:2px solid transparent;border-radius:20px;
+  padding:8px 14px;font-family:'Barlow Condensed';font-weight:700;font-size:15px;
+  cursor:pointer;color:var(--txt);letter-spacing:.04em;transition:.15s}
+.chip:hover{border-color:var(--accent)}
+.chip.on{background:var(--accent);color:#1a1a1a}
+
+/* field diagram */
+.fieldwrap{position:relative}
+.diamond{width:100%;display:block;background:#0d1420;border-radius:10px;border:2px solid var(--panel-2)}
+.runbtn{position:absolute;top:10px;right:10px;background:var(--x);color:#fff;border:none;
+  border-radius:8px;padding:8px 14px;font-family:'Barlow Condensed';font-weight:800;
+  text-transform:uppercase;letter-spacing:.08em;cursor:pointer;font-size:13px}
+.runbtn:hover{filter:brightness(1.1)}
+
+/* explainer */
+.explain{margin-top:14px;display:grid;gap:10px}
+.block{background:var(--panel-2);border-radius:10px;padding:12px 14px}
+.block .lab{font-family:'Barlow Condensed';font-weight:800;text-transform:uppercase;
+  letter-spacing:.14em;font-size:11px;color:var(--accent-2);margin-bottom:4px}
+.block.elite .lab{color:var(--accent)}
+.block p{font-size:15px;line-height:1.45}
+.block b{color:var(--accent)}
+
+/* picker */
+.picker{margin-top:14px}
+.plist{display:grid;gap:5px;max-height:230px;overflow:auto}
+.prow{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:10px;
+  background:var(--panel-2);border:2px solid transparent;border-radius:8px;padding:8px 12px;
+  cursor:pointer;transition:.12s}
+.prow:hover{border-color:var(--accent-2)}
+.prow.on{border-color:var(--accent);background:#243a26}
+.rank{font-family:'Press Start 2P';font-size:11px;color:var(--muted)}
+.prow.on .rank{color:var(--accent)}
+.prow .nm{font-family:'Barlow Condensed';font-weight:700;font-size:17px}
+.prow .tm{color:var(--muted);font-size:13px;margin-left:6px;font-weight:500}
+.prow .vl{font-family:'Barlow Condensed';font-weight:800;font-size:18px;color:var(--accent-2)}
+.prow.on .vl{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand">
+      <div class="logo">STAT<br>WORKSHOP</div>
+      <small>MLB Explainer · X's &amp; O's</small>
+    </div>
+    <div style="text-align:right">
+      <div class="season"><span class="live"></span>2026 Season</div>
+      <div class="demo-note">prototype · mock data shaped like statsapi.mlb.com</div>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-g="hitting">Offense</button>
+    <button class="tab" data-g="pitching">Pitching</button>
+    <button class="tab" data-g="fielding">Fielding</button>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT 1/3: sprite -->
+    <div class="card spritebox">
+      <h3>The Player</h3>
+      <div class="stage">
+        <div class="cloud"></div><div class="cloud"></div>
+        <div class="sprite" id="sprite"></div>
+        <div class="bat" id="bat" style="display:none"></div>
+      </div>
+      <div class="playercard">
+        <div class="pname" id="pname">—</div>
+        <div class="pteam" id="pteam">—</div>
+        <div class="pstat" id="pstat">—<small id="pstatlab">—</small></div>
+      </div>
+    </div>
+
+    <!-- RIGHT 2/3: workshop -->
+    <div class="card">
+      <h3>Pick a stat</h3>
+      <div class="chips" id="chips"></div>
+
+      <div class="fieldwrap">
+        <svg class="diamond" id="diamond" viewBox="0 0 400 300"></svg>
+        <button class="runbtn" id="run">▶ Run the play</button>
+      </div>
+
+      <div class="explain">
+        <div class="block"><div class="lab">What it means</div><p id="ex-mean"></p></div>
+        <div class="block"><div class="lab">The play</div><p id="ex-play"></p></div>
+        <div class="block elite"><div class="lab">Rank &amp; why elite</div><p id="ex-elite"></p></div>
+      </div>
+
+      <div class="picker">
+        <h3 style="margin-top:6px">Top 10 — current season</h3>
+        <div class="plist" id="plist"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---- STAT_CONFIG: the declarative source of truth ---- */
+const CFG = {
+  hitting:{ action:"swing", stats:{
+    homeRuns:{name:"HR",full:"Home Runs",
+      mean:"The number of times a batter hits the ball over the fence in fair territory, scoring automatically.",
+      play:"The batter connects — the ball arcs over the wall and the runner trots around all four bases.",
+      elite:r=>`#${r.rank} in MLB at <b>${r.value} HR</b>. That's ${r.gap} more than the 10th-ranked slugger — elite power.`,
+      anim:"hr"},
+    battingAverage:{name:"AVG",full:"Batting Average",
+      mean:"Hits divided by at-bats — how often a batter gets a hit when they put the ball in play.",
+      play:"A line drive drops in; the runner reaches first safely.",
+      elite:r=>`#${r.rank} at <b>${r.value}</b>. Getting a hit ${Math.round(r.value*1000)/10}% of the time is rarefied air.`,
+      anim:"single"},
+    onBasePercentage:{name:"OBP",full:"On-Base %",
+      mean:"How often a batter reaches base by any means — hits, walks, or hit-by-pitch.",
+      play:"Ball four — the batter jogs to first without swinging. Still a win.",
+      elite:r=>`#${r.rank} at <b>${r.value}</b>. Reaching base this often constantly creates run chances.`,
+      anim:"walk"},
+    onBasePlusSlugging:{name:"OPS",full:"On-base Plus Slugging",
+      mean:"On-base percentage plus slugging — one number combining getting on base and hitting for power.",
+      play:"A gap double: on base AND extra bases, the two things OPS rewards.",
+      elite:r=>`#${r.rank} at <b>${r.value}</b>. A top-tier OPS means a complete, dangerous hitter.`,
+      anim:"double"},
+    stolenBases:{name:"SB",full:"Stolen Bases",
+      mean:"Bases advanced by the runner alone, without a hit — beating the throw on a steal.",
+      play:"The runner takes off, slides into second ahead of the catcher's throw. Safe!",
+      elite:r=>`#${r.rank} at <b>${r.value} SB</b>. Game-changing speed on the basepaths.`,
+      anim:"steal"} }},
+  pitching:{ action:"pitch", stats:{
+    earnedRunAverage:{name:"ERA",full:"Earned Run Average",inv:true,
+      mean:"Earned runs allowed per nine innings — the lower, the better the pitcher.",
+      play:"The pitch paints the corner; the batter swings through it for strike three.",
+      elite:r=>`#${r.rank} with a <b>${r.value} ERA</b> (lower is better). Among the stingiest arms in baseball.`,
+      anim:"k"},
+    strikeouts:{name:"K",full:"Strikeouts",
+      mean:"Batters retired on a third strike — the pitcher's most dominant out.",
+      play:"Three pitches, three strikes. The batter never had a chance.",
+      elite:r=>`#${r.rank} with <b>${r.value} K</b>. Overpowering hitters all season long.`,
+      anim:"k"},
+    whip:{name:"WHIP",full:"Walks + Hits per IP",inv:true,
+      mean:"Base-runners allowed per inning via walks and hits — lower means fewer threats.",
+      play:"A quiet inning: weak grounder, easy out, nobody aboard.",
+      elite:r=>`#${r.rank} at <b>${r.value}</b> (lower is better). Rarely lets anyone on base.`,
+      anim:"single"},
+    wins:{name:"W",full:"Wins",
+      mean:"Games credited to the pitcher when their team takes and holds the lead.",
+      play:"Six strong innings, lead handed to the bullpen — that's a win.",
+      elite:r=>`#${r.rank} with <b>${r.value} W</b>. A reliable, durable front-line starter.`,
+      anim:"k"},
+    saves:{name:"SV",full:"Saves",
+      mean:"Late-game appearances where the closer protects a slim lead to finish the win.",
+      play:"Bottom of the ninth, tying run on deck — the closer slams the door.",
+      elite:r=>`#${r.rank} with <b>${r.value} SV</b>. Trusted with the game on the line.`,
+      anim:"k"} }},
+  fielding:{ action:"field", stats:{
+    fielding:{name:"FPCT",full:"Fielding %",
+      mean:"Share of fielding chances handled cleanly without an error.",
+      play:"A sharp grounder, smooth scoop, clean throw to first. Routine made routine.",
+      elite:r=>`#${r.rank} at <b>${r.value}</b>. Almost never misplays a ball.`,
+      anim:"grounder"},
+    putOuts:{name:"PO",full:"Putouts",
+      mean:"Outs a fielder records directly — catching a fly, tagging a runner, stepping on a bag.",
+      play:"Fly ball to center — tracked down and squeezed for the out.",
+      elite:r=>`#${r.rank} with <b>${r.value} PO</b>. Constantly in the middle of the action.`,
+      anim:"fly"},
+    assists:{name:"A",full:"Assists",
+      mean:"Throws that lead to an out recorded by a teammate.",
+      play:"Grounder to short, fired across the diamond — out at first.",
+      elite:r=>`#${r.rank} with <b>${r.value} A</b>. A cannon and great range.`,
+      anim:"grounder"},
+    doublePlays:{name:"DP",full:"Double Plays",
+      mean:"Two outs recorded on one batted ball — the defense's biggest momentum swing.",
+      play:"Ground ball — flip to second, relay to first. Two down in a blink.",
+      elite:r=>`#${r.rank} with <b>${r.value} DP</b>. Turns two as well as anyone.`,
+      anim:"dp"},
+    errors:{name:"E",full:"Errors",inv:true,
+      mean:"Misplays that let a batter or runner advance — fewer is better.",
+      play:"The fielder bobbles it; the runner takes an extra base. That's an error.",
+      elite:r=>`Only <b>${r.value} E</b> all season — among the surest gloves in the league.`,
+      anim:"grounder"} }}
+};
+
+/* ---- mock data shaped like statsapi leaders (drop-in swap for live fetch) ---- */
+const TEAMS=["LAD","NYY","ATL","HOU","SD","BAL","PHI","TEX","SEA","CHC","BOS","MIN"];
+const NAMES=["A. Rivera","J. Carter","M. Tanaka","D. Okafor","L. Moreno","K. Bauer","R. Santos","T. Nguyen","C. Walker","S. Park","B. Foster","E. Diaz"];
+function mockLeaders(stat){
+  const c=findStat(stat); const inv=c.inv;
+  // make plausible numbers per stat
+  let base,step;
+  switch(stat){
+    case"homeRuns":base=44;step=2;break; case"battingAverage":base=.342;step=.006;break;
+    case"onBasePercentage":base=.431;step=.007;break; case"onBasePlusSlugging":base=1.012;step=.018;break;
+    case"stolenBases":base=58;step=3;break; case"earnedRunAverage":base=2.18;step=.14;break;
+    case"strikeouts":base=248;step=9;break; case"whip":base=0.92;step=.03;break;
+    case"wins":base=18;step=1;break; case"saves":base=41;step=2;break;
+    case"fielding":base=.998;step=.002;break; case"putOuts":base=1140;step=40;break;
+    case"assists":base=420;step=18;break; case"doublePlays":base=112;step=5;break;
+    case"errors":base=2;step=1;break; default:base=100;step=4;
+  }
+  const dec=(stat==="battingAverage"||stat==="onBasePercentage")?3:(stat==="onBasePlusSlugging"||stat==="whip"||stat==="fielding"||stat==="earnedRunAverage")?(stat==="fielding"?3:2):0;
+  const rows=[]; const ord=[...Array(10).keys()];
+  ord.forEach(i=>{
+    let v=inv?base+i*step:base-i*step;
+    v=dec?Number(v.toFixed(dec)):Math.round(v);
+    rows.push({rank:i+1,name:NAMES[(i+ (stat.length))%NAMES.length],team:TEAMS[(i*2+stat.length)%TEAMS.length],value:v});
+  });
+  const gap=dec?Math.abs(rows[0].value-rows[9].value).toFixed(dec):Math.abs(rows[0].value-rows[9].value);
+  rows.forEach(r=>r.gap=gap);
+  return rows;
+}
+function findStat(stat){for(const g in CFG)if(CFG[g].stats[stat])return CFG[g].stats[stat];}
+
+/* ---- state ---- */
+let G="hitting", S="homeRuns", P=0, rows=[];
+
+const $=id=>document.getElementById(id);
+
+function renderChips(){
+  const box=$('chips'); box.innerHTML='';
+  Object.entries(CFG[G].stats).forEach(([k,v])=>{
+    const b=document.createElement('button');
+    b.className='chip'+(k===S?' on':''); b.textContent=v.name;
+    b.title=v.full; b.onclick=()=>{S=k;P=0;load();};
+    box.appendChild(b);
+  });
+}
+function renderList(){
+  const l=$('plist'); l.innerHTML='';
+  rows.forEach((r,i)=>{
+    const d=document.createElement('div');
+    d.className='prow'+(i===P?' on':'');
+    d.innerHTML=`<span class="rank">${String(r.rank).padStart(2,'0')}</span>
+      <span><span class="nm">${r.name}</span><span class="tm">${r.team}</span></span>
+      <span class="vl">${r.value}</span>`;
+    d.onclick=()=>{P=i;renderList();renderPlayer();runPlay();};
+    l.appendChild(d);
+  });
+}
+function renderPlayer(){
+  const c=CFG[G].stats[S], r=rows[P];
+  $('pname').textContent=r.name; $('pteam').textContent=r.team;
+  $('pstat').childNodes[0].nodeValue=r.value;
+  $('pstatlab').textContent=c.full;
+  $('ex-mean').textContent=c.mean;
+  $('ex-play').textContent=c.play;
+  $('ex-elite').innerHTML=c.elite(r);
+}
+
+/* ---- sprite action ---- */
+function spriteAct(){
+  const s=$('sprite'), bat=$('bat'), a=CFG[G].action;
+  s.className='sprite'; bat.style.display=(a==='swing')?'block':'none';
+  void s.offsetWidth;
+  s.classList.add(a);
+  setTimeout(()=>s.className='sprite',650);
+}
+/* draw the 8-bit guy with box-shadow pixels, colored by group */
+function paintSprite(){
+  const color=G==='hitting'?'#ff5a5a':G==='pitching'?'#41c6ff':'#ffd23f';
+  const px=4; const map=[ // simple 6x8 player
+    "..XX..","..XX..",".XXXX.","XXXXXX","X.XX.X","..XX..",".X..X.",".X..X."
+  ];
+  let sh=[];
+  map.forEach((row,y)=>row.split('').forEach((ch,x)=>{
+    if(ch==='X')sh.push(`${x*px}px ${y*px}px 0 0 ${color}`);
+  }));
+  const s=$('sprite'); s.style.boxShadow=sh.join(',');
+  s.style.width=px+'px'; s.style.height=px+'px';
+  $('bat').style.background='#d9a441';
+}
+
+/* ---- field diagram + animation ---- */
+function drawField(){
+  const svg=$('diamond');
+  svg.innerHTML=`
+    <rect x="0" y="0" width="400" height="300" fill="#0d1420"/>
+    <path d="M200 250 L330 150 L200 60 L70 150 Z" fill="#326632" stroke="#4a7" stroke-width="1.5"/>
+    <path d="M200 250 L70 150 L200 60 L330 150 Z" fill="none" stroke="#c08a4a" stroke-width="3"/>
+    <circle cx="200" cy="170" r="16" fill="#c08a4a"/>
+    <rect x="196" y="166" width="8" height="8" fill="#e8eef6"/>
+    <!-- bases -->
+    <rect x="322" y="142" width="14" height="14" fill="#f4f1e8" transform="rotate(45 329 149)"/>
+    <rect x="193" y="53" width="14" height="14" fill="#f4f1e8" transform="rotate(45 200 60)"/>
+    <rect x="63" y="142" width="14" height="14" fill="#f4f1e8" transform="rotate(45 70 149)"/>
+    <polygon points="194,250 206,250 200,242" fill="#f4f1e8"/>
+    <g id="fx"></g>`;
+}
+function runPlay(){
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){drawField();return;}
+  drawField();
+  const fx=$('diamond').querySelector('#fx');
+  const anim=CFG[G].stats[S].anim;
+  // a runner O and/or ball, path depends on anim
+  const O=mk('circle',{r:7,fill:'var(--o)',stroke:'#fff','stroke-width':2,cx:200,cy:250});
+  const ball=mk('circle',{r:4,fill:'#fff',cx:200,cy:170});
+  const paths={
+    hr:[[200,250],[330,150],[200,60],[70,150],[200,250]],
+    single:[[200,250],[330,150]],
+    double:[[200,250],[330,150],[200,60]],
+    walk:[[200,250],[330,150]],
+    steal:[[330,150],[200,60]],
+    k:[[200,170],[200,248]],
+    grounder:[[200,250],[70,150],[330,150]],
+    fly:[[200,170],[200,90]],
+    dp:[[200,250],[200,60],[330,150]]
+  };
+  const path=paths[anim]||paths.single;
+  const mover=(anim==='k'||anim==='fly')?ball:O;
+  if(anim==='steal'){O.setAttribute('cx',330);O.setAttribute('cy',150);}
+  fx.appendChild(mover);
+  if(anim==='hr'){ // ball arcs out first
+    const b2=mk('circle',{r:4,fill:'#ffd23f',cx:200,cy:170});fx.appendChild(b2);
+    animateAlong(b2,[[200,170],[330,40]],700);
+  }
+  animateAlong(mover,path,Math.min(2600,700*path.length));
+  // outs marker for dp/k
+  if(anim==='dp'||anim==='k'){
+    setTimeout(()=>{const t=mk('text',{x:300,y:40,fill:'var(--x)','font-size':20,'font-family':'Press Start 2P','font-weight':700});t.textContent='OUT';fx.appendChild(t);},900);
+  }
+}
+function mk(tag,attrs){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+function animateAlong(el,pts,dur){
+  const seg=dur/(pts.length-1); let i=0;
+  function step(){
+    if(i>=pts.length-1)return;
+    const[a,b]=[pts[i],pts[i+1]]; const t0=performance.now();
+    function frame(now){
+      let k=Math.min(1,(now-t0)/seg);
+      const cx=a[0]+(b[0]-a[0])*k, cy=a[1]+(b[1]-a[1])*k;
+      el.setAttribute('cx',cx);el.setAttribute('cy',cy);
+      if(k<1)requestAnimationFrame(frame);else{i++;step();}
+    }
+    requestAnimationFrame(frame);
+  }
+  step();
+}
+
+/* ---- load (mock now; swap mockLeaders() for fetch() to go live) ---- */
+function load(){
+  rows=mockLeaders(S);
+  renderChips(); renderList(); paintSprite(); renderPlayer();
+  drawField(); spriteAct(); setTimeout(runPlay,120);
+}
+
+$('tabs').onclick=e=>{
+  const b=e.target.closest('.tab'); if(!b)return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  b.classList.add('on'); G=b.dataset.g; S=Object.keys(CFG[G].stats)[0]; P=0; load();
+};
+$('run').onclick=()=>{spriteAct();runPlay();};
+
+load();
+</script>
+</body>
+</html>

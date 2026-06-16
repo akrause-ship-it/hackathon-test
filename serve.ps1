@@ -49,6 +49,11 @@ try {
       $fullRoot = [System.IO.Path]::GetFullPath($Root)
       $fullPath = [System.IO.Path]::GetFullPath($path)
 
+      # Directory request (e.g. /baseball/) -> serve its index.html, matching Vercel.
+      if (Test-Path $fullPath -PathType Container) {
+        $fullPath = Join-Path $fullPath "index.html"
+      }
+
       if ($fullPath.StartsWith($fullRoot) -and (Test-Path $fullPath -PathType Leaf)) {
         $ext = [System.IO.Path]::GetExtension($fullPath).ToLower()
         $type = $mime[$ext]
