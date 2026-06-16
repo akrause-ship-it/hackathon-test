@@ -31,6 +31,7 @@
     grass: '#3d7a3d', grassDk: '#326632',
     dirt: '#c08a4a', dirtDk: '#a8753a',
     fence: '#21402b', fenceCap: '#ffd23f',
+    wallGreen: '#27512c', wallGreenDk: '#1f4124',
     wall: '#14202e', board: '#0d1420', boardLit: '#ffd23f',
     cloud: '#ffffff', sun: '#ffe066',
     skin: '#ffc48a', ball: '#ffffff', hitBall: '#ffd23f',
@@ -41,6 +42,7 @@
   // key spots (world units)
   const GROUND = 27;             // grass top / feet line
   const CAT_X = 6, PIT_X = 35, FENCE_X = 57, BAT_CENTER = 12;
+  const MOUND_C = 36, MOUND_H = 0.9;   // pitcher's mound center + height (world units)
   const HAND = [33, 19], PLATE = [15, 23], CONTACT = [16, 22];
 
   let canvas, ctx;
@@ -68,152 +70,215 @@
   // bat cocked up over the shoulder. CXB/HB = body-center col & feet row.
   // Authored on a fine grid (BQ px/pixel) for a smooth silhouette. CXB = body
   // center col, HB = feet row. Facing right; bat cocked up over the shoulder.
-  const BQ = 3, BATTER_CXB = 13, BATTER_HB = 45;
-  const BAT_COL = { N: '#16224a', F: '#ffc88f', W: '#eef1f5', T: '#1aa0a0', S: '#15161f' };
-  const BATTER = [
-    // bat (up-left) tapering down into the hands, with a knob
-    ['N', 1, 0, 3, 1], ['N', 1, 1, 3, 1], ['N', 2, 2, 3, 1], ['N', 2, 3, 3, 1],
-    ['N', 3, 4, 3, 1], ['N', 4, 5, 3, 1], ['N', 5, 6, 3, 1], ['N', 5, 7, 3, 1],
-    ['N', 6, 8, 2, 1],                                // knob
-    ['F', 6, 8, 3, 2], ['F', 7, 10, 3, 1],            // hands
-    ['W', 8, 9, 3, 2], ['W', 9, 11, 3, 2], ['W', 10, 12, 2, 2], // arms to shoulder
-    // cap (rounded crown + brim to the right) + face
-    ['N', 9, 1, 6, 1], ['N', 8, 2, 8, 1], ['N', 8, 3, 8, 1],
-    ['N', 8, 4, 7, 1], ['N', 15, 4, 4, 1],            // cap base + brim
-    ['F', 9, 5, 6, 3], ['F', 8, 6, 1, 1], ['F', 10, 8, 4, 1],   // face + chin
-    ['F', 11, 9, 3, 1],                               // neck
-    // torso (shoulders -> tapered waist) with teal placket + navy belt
-    ['W', 8, 10, 9, 1], ['W', 8, 11, 10, 1], ['W', 8, 12, 10, 7],
-    ['W', 9, 19, 9, 2], ['T', 12, 11, 2, 8], ['N', 9, 21, 9, 1],
-    // hips + legs (stance apart, front leg toward the pitcher)
-    ['W', 9, 22, 9, 4], ['W', 9, 26, 4, 13], ['W', 14, 26, 4, 13],
-    ['W', 10, 38, 3, 3], ['W', 14, 38, 3, 3],         // shin taper
-    ['T', 10, 40, 3, 2], ['T', 14, 40, 3, 2],         // socks
-    ['S', 8, 42, 6, 3], ['S', 14, 42, 8, 3],          // shoes (longer toe to the right)
+  const BQ = 3, BATTER_CXB = 11, BATTER_HB = 42;
+  const SH_X = 11, SH_Y = 9, WST_X = 11, WST_Y = 19;   // shoulder + waist pivots
+  const BAT_COL = { N: '#16224a', F: '#ffc88f', W: '#eef1f5', W2: '#c7ced9', T: '#1aa0a0', S: '#15161f' };
+
+  // The batter is split into three parts so the swing is articulated, not a
+  // rigid whole-body tilt: planted lower body, an upper body that coils a little,
+  // and an arm+bat "lever" that swings through an arc around the shoulder.
+  const BODY_LOWER = [
+    ['W', 8, 19, 6, 3],                                // hips
+    ['W', 8, 22, 2, 8], ['W', 6, 30, 2, 9], ['W2', 7, 30, 1, 9],   // back leg
+    ['W', 12, 22, 2, 8], ['W', 14, 30, 2, 9], ['W2', 15, 30, 1, 9],// front leg
+    ['W2', 9, 22, 1, 8], ['W2', 13, 22, 1, 8],         // thigh shadows
+    ['T', 6, 38, 2, 1], ['T', 14, 38, 2, 1],           // socks
+    ['S', 4, 39, 5, 3], ['S', 14, 39, 5, 3],           // shoes (spread wide)
   ];
-  function drawBatter(cxCell, angle) {
-    ctx.save();
-    ctx.translate(cxCell * RES, GROUND * RES);        // pivot at the feet
-    ctx.rotate(angle);
-    BATTER.forEach(([c, x, y, w, h]) => {
+  const BODY_UPPER = [                                 // cap, face, torso, belt
+    ['N', 8, 2, 5, 1], ['N', 7, 3, 7, 1], ['N', 7, 4, 6, 1], ['N', 13, 4, 3, 1],
+    ['F', 8, 5, 5, 2], ['F', 7, 5, 1, 1], ['F', 9, 7, 3, 1],
+    ['W', 8, 8, 6, 1], ['W', 8, 9, 6, 9], ['W2', 12, 9, 1, 9], ['T', 9, 10, 1, 2], ['N', 8, 18, 6, 1],
+  ];
+  const ARMBAT = [                                     // sleeves + hands + bat
+    ['W', 8, 8, 3, 2], ['W', 11, 8, 2, 1],
+    ['F', 11, 6, 3, 1], ['F', 11, 7, 3, 1],
+    ['N', 11, 0, 2, 1], ['N', 11, 1, 2, 1], ['N', 11, 2, 2, 1],
+    ['N', 12, 3, 2, 1], ['N', 12, 4, 2, 1], ['N', 12, 5, 2, 1], ['N', 13, 6, 1, 1],
+  ];
+
+  const smooth = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+  function paintParts(list) {
+    list.forEach(([c, x, y, w, h]) => {
       ctx.fillStyle = BAT_COL[c];
       ctx.fillRect((x - BATTER_CXB) * BQ, (y - BATTER_HB) * BQ, w * BQ, h * BQ);
+    });
+  }
+  function pivotAt(px, py, ang, draw) {              // rotate `draw` about a bg-grid point
+    const lx = (px - BATTER_CXB) * BQ, ly = (py - BATTER_HB) * BQ;
+    ctx.save(); ctx.translate(lx, ly); ctx.rotate(ang); ctx.translate(-lx, -ly);
+    draw(); ctx.restore();
+  }
+
+  // sp: 0 = loaded stance, 1 = full follow-through.
+  function drawBatter(cxCell, sp) {
+    const e = smooth(sp);
+    const coil = -0.05 + 0.16 * e;     // upper body uncoils through the swing
+    const swing = 2.45 * e;            // arm+bat lever sweeps down toward the pitcher
+    ctx.save();
+    ctx.translate(cxCell * RES, GROUND * RES);
+    paintParts(BODY_LOWER);                               // planted
+    pivotAt(WST_X, WST_Y, coil, () => {                   // upper body coils at the waist
+      paintParts(BODY_UPPER);
+      pivotAt(SH_X, SH_Y, swing, () => paintParts(ARMBAT)); // arms+bat swing at the shoulder
     });
     ctx.restore();
   }
 
-  // ---- procedural figures (pitcher / catcher / fielder / runner) ---------
-  // L = left world cell, color, pose, face (+1 right / -1 left). Slimmer,
-  // sub-unit proportions so they read at the finer art-pixel size.
-  function figure(L, color, pose, face) {
-    const F = GROUND, cx = L + 1.5;
+  // ---- shared detailed player (pitcher / catcher / fielder / runner) ------
+  // Same pixel-art build as the batter (cap, face, shaded uniform, socks,
+  // shoes), drawn at the BQ grid in pose-specific limbs. `accent` (the passed
+  // color) tints a small jersey stripe so roles still read; `face<0` mirrors
+  // the figure to face left. Color keys: A = accent, G = glove, else BAT_COL.
+  const PCX = 8, PHB = 40;
+  const PBODY = [
+    ['N', 6, 2, 5, 1], ['N', 5, 3, 7, 1], ['N', 11, 4, 3, 1],   // cap crown + brim
+    ['F', 6, 5, 5, 2], ['F', 5, 5, 1, 1], ['F', 7, 7, 3, 1],     // face, ear, neck
+    ['W', 5, 8, 7, 1], ['W', 5, 9, 7, 8], ['W2', 10, 9, 1, 8],   // torso + shaded side
+    ['A', 7, 10, 1, 5], ['N', 5, 17, 7, 1], ['W', 5, 18, 7, 3],  // accent stripe, belt, hips
+  ];
+  const PLEGS = {
+    idle: [
+      ['W', 5, 21, 3, 9], ['W2', 7, 21, 1, 9], ['W', 9, 21, 3, 9], ['W2', 11, 21, 1, 9],
+      ['W', 5, 30, 3, 7], ['W', 9, 30, 3, 7], ['T', 5, 36, 3, 1], ['T', 9, 36, 3, 1],
+      ['S', 3, 37, 5, 3], ['S', 9, 37, 6, 3],
+    ],
+    windup: [
+      ['W', 5, 21, 3, 10], ['W', 5, 31, 3, 6], ['T', 5, 37, 3, 1], ['S', 3, 38, 5, 3], // planted
+      ['W', 9, 22, 3, 5], ['W', 11, 26, 3, 3], ['S', 13, 28, 4, 3],                     // lifted knee
+    ],
+    throw: [
+      ['W', 4, 21, 3, 10], ['W', 2, 31, 3, 7], ['S', 0, 38, 5, 3],   // push leg
+      ['W', 10, 21, 3, 9], ['W', 12, 30, 4, 7], ['S', 12, 37, 6, 3], ['T', 12, 36, 3, 1], // stride
+    ],
+    run1: [
+      ['W', 4, 21, 3, 9], ['W', 2, 30, 3, 8], ['S', 0, 38, 5, 3],
+      ['W', 10, 21, 3, 8], ['W', 12, 29, 3, 7], ['S', 12, 36, 6, 3],
+    ],
+    run2: [
+      ['W', 6, 21, 3, 10], ['W', 6, 31, 3, 7], ['S', 4, 38, 5, 3],
+      ['W', 9, 21, 3, 9], ['W', 10, 30, 3, 7], ['S', 10, 37, 6, 3],
+    ],
+  };
+  PLEGS.reach = PLEGS.idle; PLEGS.scoop = PLEGS.idle;
+  const PARMS = {
+    idle: [['W', 3, 9, 2, 6], ['F', 3, 15, 2, 2], ['W', 12, 9, 2, 6], ['F', 12, 15, 2, 2]],
+    windup: [['W', 5, 3, 4, 2], ['F', 6, 1, 3, 1]],                          // hands overhead
+    throw: [['W', 11, 8, 4, 1], ['F', 14, 7, 2, 2], ['W', 3, 10, 2, 3], ['F', 3, 13, 2, 2]],
+    reach: [['W', 11, 4, 2, 5], ['G', 12, 2, 3, 3], ['W', 4, 10, 2, 4], ['F', 4, 14, 2, 2]],
+    scoop: [['W', 12, 12, 2, 6], ['G', 13, 17, 3, 3], ['W', 4, 11, 2, 3], ['F', 4, 14, 2, 2]],
+    run1: [['W', 3, 9, 2, 4], ['F', 3, 13, 2, 2], ['W', 12, 11, 2, 4], ['F', 13, 14, 2, 2]],
+    run2: [['W', 4, 11, 2, 4], ['F', 4, 15, 2, 2], ['W', 11, 9, 2, 4], ['F', 12, 13, 2, 2]],
+  };
+  // Catcher = the SAME full-scale player (PBODY sunk by CROUCH_DROP rows) with
+  // deeply folded legs — a normal-sized body bending down, not a tiny round blob.
+  const CROUCH_DROP = 13;
+  const PCROUCH_LEGS = [
+    ['W', 3, 31, 4, 3], ['W', 9, 31, 4, 3],            // splayed thighs off the (lowered) hips
+    ['W', 2, 34, 3, 5], ['W', 12, 34, 3, 5],           // shins to a wide base
+    ['S', 1, 38, 5, 2], ['S', 12, 38, 5, 2],           // feet
+  ];
+  const PCROUCH_ARMS = [
+    ['W', 11, 22, 2, 3], ['G', 13, 22, 3, 3],          // glove arm forward (toward the pitch)
+    ['W', 4, 23, 2, 4], ['F', 4, 27, 2, 2],            // throwing arm down
+  ];
 
-    if (pose === 'crouch') {                          // compact catcher
-      cell(cx - 0.6, F - 5.4, 1.2, 1.4, color);
-      cell(cx - 0.75, F - 4, 1.5, 2.4, color);
-      cell(cx - 0.7, F - 1.6, 1.6, 1.6, color);
-      cell(cx + face * 0.9, F - 3.4, 0.9, 0.9, C.glove);
-      return;
-    }
-
-    const bob = pose === 'idle' ? Math.sin(performance.now() / 300) * 0.12 : 0;
-    cell(cx - 0.6, F - 9 + bob, 1.2, 1.5, color);     // head
-    cell(cx - 0.75, F - 7.3 + bob, 1.5, 3.8, color);  // torso
-
-    if (pose === 'windup') {
-      cell(cx - 0.7, F - 3.6, 0.6, 3.6, color);
-      cell(cx + 0.25, F - 3.6, 0.6, 2.1, color);      // lifted knee
-      cell(cx - 0.5, F - 10.3 + bob, 1.1, 1.3, color);// hands overhead
-    } else if (pose === 'throw') {
-      const ax = face > 0 ? cx + 0.5 : cx - 2.1;
-      cell(ax, F - 7.3, 1.6, 0.5, color);             // extended arm
-      cell(ax + (face > 0 ? 1.4 : 0), F - 7.7, 0.5, 1, color);
-      cell(cx - 0.95, F - 3.6, 0.6, 3.6, color);
-      cell(cx + 0.55, F - 3.6, 0.6, 3.6, color);      // stride
-    } else if (pose === 'reach') {                    // high catch
-      cell(cx + face * 0.8, F - 9.4 + bob, 0.55, 1.7, color);
-      cell(cx + face * 1.0, F - 9.9, 0.95, 0.95, C.glove);
-      cell(cx - face * 0.95, F - 7, 0.5, 2.4, color);
-      cell(cx - 0.7, F - 3.6, 0.6, 3.6, color); cell(cx + 0.1, F - 3.6, 0.6, 3.6, color);
-    } else if (pose === 'scoop') {                    // ground ball
-      cell(cx + face * 0.7, F - 3.4, 0.5, 3, color);
-      cell(cx + face * 1.15, F - 1.2, 0.95, 0.95, C.glove);
-      cell(cx - face * 0.9, F - 7, 0.5, 2.4, color);
-      cell(cx - 0.7, F - 3.6, 0.6, 3.6, color); cell(cx + 0.1, F - 3.6, 0.6, 3.6, color);
-    } else if (pose === 'run1' || pose === 'run2') {
-      const s = pose === 'run1' ? 1 : -1;
-      cell(cx - 1.0, F - 3.6, 0.6, 3.4 + s * 0.2, color);   // trailing leg
-      cell(cx + 0.55, F - 3.6, 0.6, 3.4 - s * 0.2, color);  // leading leg
-      cell(cx - 1.2, F - 6.6, 0.5, 1.9, color);
-      cell(cx + 0.8, F - 6.8, 0.5, 1.9, color);             // pumping arms
-    } else {                                          // idle
-      cell(cx - 0.7, F - 3.6, 0.6, 3.6, color); cell(cx + 0.1, F - 3.6, 0.6, 3.6, color);
-      cell(cx - 1.15, F - 7 + bob, 0.5, 3, color); cell(cx + 0.65, F - 7 + bob, 0.5, 3, color);
-    }
+  function paintBG(list, accent, dy) {
+    dy = dy || 0;
+    list.forEach(([c, x, y, w, h]) => {
+      ctx.fillStyle = c === 'A' ? accent : c === 'G' ? C.glove : BAT_COL[c];
+      ctx.fillRect((x - PCX) * BQ, (y + dy - PHB) * BQ, w * BQ, h * BQ);
+    });
   }
-
-  // figure() at a vertical offset (world units) — for the high/ground fielder
-  function figureAt(L, color, pose, face, dyUnits) {
+  function drawPlayer(cxCell, pose, accent, face) {
     ctx.save();
-    ctx.translate(0, dyUnits * RES);
-    figure(L, color, pose, face);
+    ctx.translate(cxCell * RES, GROUND * RES);
+    if (face < 0) ctx.scale(-1, 1);
+    if (pose === 'crouch') {
+      paintBG(PBODY, accent, CROUCH_DROP);   // full-size cap/face/torso, sunk into the crouch
+      paintBG(PCROUCH_LEGS, accent);
+      paintBG(PCROUCH_ARMS, accent);
+      ctx.restore(); return;
+    }
+    paintBG(PBODY, accent);
+    paintBG(PLEGS[pose] || PLEGS.idle, accent);
+    paintBG(PARMS[pose] || PARMS.idle, accent);
     ctx.restore();
+  }
+  // keep the old call sites working (L = left world cell → center is L + 1.5)
+  function figure(L, color, pose, face) { drawPlayer(L + 1.5, pose, color, face); }
+  function figureAt(L, color, pose, face, dyUnits) {
+    ctx.save(); ctx.translate(0, dyUnits * RES); drawPlayer(L + 1.5, pose, color, face); ctx.restore();
   }
 
   function ball(pos, color) { cell(pos[0], pos[1], 0.7, 0.7, color || C.ball); }
 
+  // Play call-outs live low on the grass (world y~37) so they never overlap the
+  // crowd; a dark shadow keeps them legible on the green.
   function label(text, color) {
-    ctx.fillStyle = color;
+    const x = (GW * RES) / 2, y = 37 * RES;
     ctx.font = `${RES * 1.5}px 'Press Start 2P', monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText(text, (GW * RES) / 2, 7 * RES);
+    ctx.fillStyle = '#0a1018'; ctx.fillText(text, x + 2, y + 2);
+    ctx.fillStyle = color; ctx.fillText(text, x, y);
   }
 
-  // ---- static backdrop ---------------------------------------------------
-  const clouds = [[6, 5], [40, 8]];
+  // ---- static backdrop: sky → full-width crowd → solid green wall → grass --
+  const clouds = [[6, 2], [40, 3]];
   function backdrop() {
-    const g = ctx.createLinearGradient(0, 0, 0, GROUND * RES);
+    const SKY = 6, WALL = 18;                          // world-y bands: wall top sits just above the players' heads (~y20)
+    // sky strip
+    const g = ctx.createLinearGradient(0, 0, 0, SKY * RES);
     g.addColorStop(0, C.skyTop); g.addColorStop(1, C.skyLow);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, GW * RES, GROUND * RES);
-    cell(3, 3, 4, 4, C.sun);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, GW * RES, SKY * RES);
+    cell(3, 1, 4, 3, C.sun);
     const drift = (performance.now() / 1400) % (GW + 16);
     clouds.forEach((c, i) => {
       const x = (c[0] + drift * (i ? 0.6 : 1)) % (GW + 16) - 8;
-      cell(x, c[1], 4, 2, C.cloud); cell(x + 1, c[1] - 1, 3, 1, C.cloud);
+      cell(x, c[1], 4, 1.4, C.cloud);
     });
-    // crowd + back wall
-    cell(38, 9, 26, 6, C.wall);
-    for (let r = 0; r < 5; r++) for (let x = 38; x < 64; x += 1.5) {
-      const hop = ((Math.floor(performance.now() / 200) + Math.round(x) + r) % 7 === 0) ? -0.6 : 0;
-      const hue = ['#ff5a5a', '#41c6ff', '#ffd23f', '#8aa0bd', '#e8eef6'][(Math.round(x) + r) % 5];
-      cell(x, 9 + r * 1.2 + (state.cheer ? hop : 0), 0.8, 0.8, hue);
+    // stands + packed crowd — FULL WIDTH, filling all the way down to the wall top
+    cell(0, SKY, GW, WALL - SKY, C.wall);            // dark seams behind the seats
+    const HUES = ['#ff5a5a', '#41c6ff', '#ffd23f', '#8aa0bd', '#e8eef6', '#ff9f4a', '#7ee07e'];
+    for (let r = 0; SKY + 0.4 + r * 1.2 < WALL; r++) {
+      const yy = SKY + 0.4 + r * 1.2;
+      for (let x = 0; x < GW; x += 1.4) {
+        const hop = (state.cheer && (Math.floor(performance.now() / 200) + Math.round(x) + r) % 7 === 0) ? -0.4 : 0;
+        cell(x, yy + hop, 0.8, 0.8, HUES[(Math.round(x) + r) % HUES.length]);
+      }
     }
-    // scoreboard
-    cell(44, 2, 18, 6, C.board);
-    cell(45, 3, 16, 1, C.boardLit);
-    for (let i = 0; i < 7; i++) cell(46 + i * 2, 5, 1, 2, (i % 3 === 0) ? C.boardLit : '#1f3047');
-    // outfield fence
-    cell(FENCE_X, 14, 2, GROUND - 14, C.fence);
-    cell(FENCE_X, 13, 2, 1, C.fenceCap);
+    // solid green outfield wall — FULL WIDTH backdrop for every player
+    cell(0, WALL, GW, GROUND - WALL, C.wallGreen);
+    cell(0, WALL, GW, 0.5, C.fenceCap);                // yellow cap atop the wall
+    ctx.fillStyle = C.wallGreenDk;                     // faint vertical seams
+    for (let x = 4; x < GW; x += 8)
+      ctx.fillRect(Math.round(x * RES), Math.round(WALL * RES), Math.max(1, Math.round(0.18 * RES)), Math.round((GROUND - WALL) * RES));
+    // scoreboard mounted on the outfield wall (center field)
+    cell(40, 18.5, 18, 4.5, C.board);
+    cell(41, 19.1, 16, 0.7, C.boardLit);
+    for (let i = 0; i < 7; i++) cell(42 + i * 2, 20.6, 0.9, 1.4, (i % 3 === 0) ? C.boardLit : '#1f3047');
     // grass + dirt
     cell(0, GROUND, GW, GH - GROUND, C.grass);
     ctx.fillStyle = C.grassDk;
     for (let x = 0; x < GW; x += 6) ctx.fillRect(x * RES, GROUND * RES, 3 * RES, (GH - GROUND) * RES);
-    cell(8, GROUND, 12, 1, C.dirt);                   // batter's box
-    cell(32, GROUND - 1, 8, 2, C.dirt);               // mound
-    cell(36, GROUND - 1, 1, 1, C.dirtDk);
-    cell(26, GROUND, 1, 0.7, '#f4f1e8');              // bases
-    cell(40, GROUND, 1, 0.7, '#f4f1e8');
-    cell(13, GROUND, 1, 0.7, '#f4f1e8');
+    cell(8, GROUND, 12, 1, C.dirt);                    // batter's box
+    // pitcher's mound — a low hill that slopes down to field level on both sides
+    cell(MOUND_C - 6, GROUND - MOUND_H * 0.5, 12, MOUND_H * 0.5 + 0.5, C.dirt);  // base (widest, to ground)
+    cell(MOUND_C - 4, GROUND - MOUND_H * 0.8, 8, MOUND_H * 0.6, C.dirt);         // mid tier
+    cell(MOUND_C - 2.5, GROUND - MOUND_H, 5, MOUND_H * 0.7, C.dirt);             // top tier
+    cell(MOUND_C - 0.5, GROUND - MOUND_H, 1, 0.6, C.dirtDk);                     // rubber
+    cell(13, GROUND, 1, 0.7, '#f4f1e8');               // home
+    cell(26, GROUND, 1, 0.7, '#f4f1e8');               // first
+    cell(59, GROUND, 1, 0.7, '#f4f1e8');               // second (mound at x36 is now the midpoint home↔second)
   }
 
   // ---- per-stat play timelines ------------------------------------------
   const ANIM = {
-    hr:       { ball: [HAND, PLATE, CONTACT, [30, 8], [46, 3], [62, 2]], swing: 0.34, runner: [[13, GROUND - 9], [26, GROUND - 9], [40, GROUND - 9], [13, GROUND - 9]], cheer: 0.6, label: 'HOME RUN!' },
+    hr:       { ball: [HAND, PLATE, CONTACT, [30, 8], [46, 3], [62, 2]], swing: 0.34, runner: [[13, GROUND - 9], [26, GROUND - 9], [59, GROUND - 9], [13, GROUND - 9]], cheer: 0.6, label: 'HOME RUN!' },
     single:   { ball: [HAND, PLATE, CONTACT, [28, 24], [40, 26]], swing: 0.4, runner: [[13, GROUND - 9], [26, GROUND - 9]], label: 'BASE HIT' },
-    double:   { ball: [HAND, PLATE, CONTACT, [36, 17], [52, 22]], swing: 0.4, runner: [[13, GROUND - 9], [26, GROUND - 9], [40, GROUND - 9]], label: 'DOUBLE' },
+    double:   { ball: [HAND, PLATE, CONTACT, [36, 17], [52, 22]], swing: 0.4, runner: [[13, GROUND - 9], [26, GROUND - 9], [59, GROUND - 9]], label: 'DOUBLE' },
     walk:     { ball: [HAND, [9, 26]], swing: -1, runner: [[13, GROUND - 9], [26, GROUND - 9]], label: 'BALL FOUR' },
-    steal:    { ball: [[CAT_X + 1, 23], [26, GROUND - 1]], swing: -1, runner: [[26, GROUND - 9], [40, GROUND - 9]], label: 'STOLEN BASE' },
+    steal:    { ball: [[CAT_X + 1, 23], [59, GROUND - 1]], swing: -1, runner: [[26, GROUND - 9], [59, GROUND - 9]], label: 'STOLEN BASE' },
     k:        { ball: [HAND, PLATE, [CAT_X + 1, 25]], swing: 0.55, whiff: true, label: 'STRIKE 3!' },
     grounder: { ball: [HAND, PLATE, CONTACT, [30, 27], [42, GROUND - 1]], swing: 0.38, fielder: 43, throw: [26, GROUND - 4], outs: 1, label: 'OUT AT 1ST' },
     fly:      { ball: [HAND, PLATE, CONTACT, [34, 14], [48, 16]], swing: 0.38, fielder: 48, high: true, outs: 1, label: 'CAUGHT!' },
@@ -226,58 +291,75 @@
     backdrop();
     const a = ANIM[state.anim] || ANIM.single;
 
+    // Action clock: pitch/swing/ball run at normal speed (pf), while the runner
+    // and end labels use real p — and the play's dur is stretched — so only the
+    // runner ends up at ~half speed.
+    const af = state.actionFrac || 1;
+    const pf = Math.min(1, p / af);
+
     // pitcher: windup -> throw across the first third
     let pitcherPose = 'idle';
-    if (p < 0.18) pitcherPose = 'windup';
-    else if (p < 0.36) pitcherPose = 'throw';
-    figure(PIT_X, TEAM.pitching, pitcherPose, -1);
+    if (pf < 0.18) pitcherPose = 'windup';
+    else if (pf < 0.36) pitcherPose = 'throw';
+    figureAt(PIT_X, TEAM.pitching, pitcherPose, -1, -MOUND_H);  // standing on the mound
 
     figure(CAT_X, '#8aa0bd', 'crouch', 1);            // catcher
 
-    // batter — rotate around feet to swing toward the pitcher; trot on a walk
-    let swingAngle = 0, batShift = 0;
-    if (a.swing >= 0 && p >= a.swing) {
-      const sw = Math.min(1, (p - a.swing) / 0.18);
-      swingAngle = (a.whiff ? 0.9 : 1.15) * Math.sin(sw * Math.PI);
-      if (!a.whiff && p > a.swing + 0.18) swingAngle = 0.25;
-    } else if (state.anim === 'walk' && p > 0.6) {
-      batShift = ((p - 0.6) / 0.4) * 12;
+    // batter — articulated swing (sp: 0 = loaded, 1 = full follow-through).
+    let sp = 0;
+    if (a.swing >= 0 && pf >= a.swing) {
+      sp = Math.min(1, (pf - a.swing) / 0.22);
+      if (a.whiff && pf > a.swing + 0.30) sp = Math.max(0, 1 - (pf - a.swing - 0.30) / 0.22); // whiff recoils to load
     }
-    drawBatter(BAT_CENTER + batShift, swingAngle);
+    // When the runner starts at home, the BATTER becomes that runner: he swings
+    // (or takes ball four), then takes off — never both. Handoff is in action-clock
+    // space; convert to real p for the (slower) runner.
+    const becomesRunner = a.runner && Math.abs(a.runner[0][0] - 13) < 2;
+    const runStart = (a.swing >= 0 ? a.swing + 0.20 : 0.5) * af;
 
     // fielder
     if (a.fielder != null) {
-      const caught = p > 0.7;
-      const pose = a.high ? 'reach' : (a.bobble && p > 0.72 ? 'idle' : 'scoop');
+      const caught = pf > 0.7;
+      const pose = a.high ? 'reach' : (a.bobble && pf > 0.72 ? 'idle' : 'scoop');
       const dy = a.high ? -6 : 0;
       figureAt(a.fielder, TEAM.fielding, caught && !a.high ? 'idle' : pose, -1, dy);
     }
 
-    // runner
+    // runner — uses real p (over the stretched dur) so it travels at half the
+    // old speed. becomesRunner appears after the takeoff; a steal shows throughout.
     if (a.runner) {
-      const rp = along(a.runner, Math.min(1, p));
-      const stride = (Math.floor(performance.now() / 140) % 2) ? 'run1' : 'run2';
-      figure(rp[0] - 1.5, '#e8eef6', p < 1 ? stride : 'idle', 1);
+      const show = becomesRunner ? p >= runStart : true;
+      if (show) {
+        const prog = becomesRunner ? (p - runStart) / Math.max(0.001, 1 - runStart) : Math.min(1, p);
+        const rp = along(a.runner, Math.min(1, Math.max(0, prog)));
+        const stride = (Math.floor(performance.now() / 140) % 2) ? 'run1' : 'run2';
+        figure(rp[0] - 1.5, '#e8eef6', prog < 1 ? stride : 'idle', 1);
+      }
     }
 
-    // double-play relay
-    if (a.relay && p > 0.45) ball(along(a.relay, Math.min(1, (p - 0.45) / 0.55)), C.ball);
+    // batter — drawn unless he has already become the runner
+    if (!(becomesRunner && p >= runStart)) drawBatter(BAT_CENTER, sp);
 
-    // primary ball
+    // double-play relay
+    if (a.relay && pf > 0.45) ball(along(a.relay, Math.min(1, (pf - 0.45) / 0.55)), C.ball);
+
+    // primary ball (steal throw tracks the runner on real p; others on pf)
     let bpos;
     if (state.anim === 'steal') bpos = along(a.ball, Math.min(1, p * 1.1));
-    else if (a.throw && p > 0.62) bpos = along([a.ball[a.ball.length - 1], a.throw], Math.min(1, (p - 0.62) / 0.38));
-    else bpos = along(a.ball, p);
-    if (!(a.relay && p > 0.45)) ball(bpos, (a.swing >= 0 && p > a.swing) ? C.hitBall : C.ball);
+    else if (a.throw && pf > 0.62) bpos = along([a.ball[a.ball.length - 1], a.throw], Math.min(1, (pf - 0.62) / 0.38));
+    else bpos = along(a.ball, pf);
+    if (!(a.relay && pf > 0.45)) ball(bpos, (a.swing >= 0 && pf > a.swing) ? C.hitBall : C.ball);
 
-    state.cheer = (a.cheer && p > a.cheer) ? 1 : 0;
+    state.cheer = (a.cheer && pf > a.cheer) ? 1 : 0;
 
     // outs / labels at the end
     if (p >= 0.92) {
       if (a.outs) {
-        ctx.fillStyle = C.out; ctx.font = `${RES * 1.3}px 'Press Start 2P', monospace`;
+        const x = (GW * RES) / 2, y = 32.5 * RES;
+        ctx.font = `${RES * 1.3}px 'Press Start 2P', monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText(a.outs === 2 ? 'x2' : 'OUT', (GW * RES) * 0.62, 20 * RES);
+        ctx.fillStyle = '#0a1018'; ctx.fillText(a.outs === 2 ? 'TWO OUTS' : 'OUT', x + 2, y + 2);
+        ctx.fillStyle = C.out; ctx.fillText(a.outs === 2 ? 'TWO OUTS' : 'OUT', x, y);
       }
       if (a.label) label(a.label, (a.outs || a.whiff) ? C.out : C.cheer);
     }
@@ -314,10 +396,21 @@
   function play({ group, anim }) {
     state.group = group;
     state.anim = ANIM[anim] ? anim : 'single';
+    const a = ANIM[state.anim];
+    const base = state.anim === 'hr' ? 3000 : (state.anim === 'dp' ? 3200 : 2600);
+    // Runner travels at ~half speed: stretch the play, but keep the pitch/swing/
+    // ball at normal speed via the action clock (= actionFrac of the timeline).
+    if (a.runner) {
+      const homeRunner = Math.abs(a.runner[0][0] - 13) < 2;
+      const runStartPf = a.swing >= 0 ? a.swing + 0.20 : 0.5;
+      state.actionFrac = homeRunner ? 1 / (2 - runStartPf) : 0.5;
+    } else {
+      state.actionFrac = 1;
+    }
+    state.dur = Math.round(base / state.actionFrac);
     if (reduceMotion()) { state.playing = false; render(); return; }
     state.playing = true;
     state.t0 = performance.now();
-    state.dur = state.anim === 'hr' ? 3000 : (state.anim === 'dp' ? 3200 : 2600);
     startLoop();
     // settle even if rAF is throttled (backgrounded tab)
     clearTimeout(state.settle);
