@@ -227,6 +227,20 @@ function mouth(cx,cy){
   return `<path d="M${cx} ${cy} q-4 5 -8 1 M${cx} ${cy} q4 5 8 1" stroke="${INK}" stroke-width="2.2" fill="none"/>`
     +`<path d="M${cx-1.6} ${cy+1} l1.6 3.4 l1.6 -3.4 Z" fill="#fff" stroke="${INK}" stroke-width=".7"/>`;
 }
+// per-animal signature face markings (muzzle/nose, beak, whiskers)
+function marks(a){
+  let m="";
+  if(["cat","fox","deer","capybara","seal","ferret","bat","hedgehog","rabbit"].includes(a.n)){
+    m+=`<ellipse cx="100" cy="74" rx="15" ry="10" fill="#fff" opacity=".4"/>`        // soft muzzle
+      +`<ellipse cx="100" cy="70" rx="3.2" ry="2.5" fill="${INK}"/>`;                 // nose
+  }
+  if(a.n==="owl"){ m+=`<path d="M95 69 L105 69 L100 79 Z" fill="${a.acc}" stroke="${INK}" stroke-width="1.8"/>`; } // beak
+  if(a.n==="cat"||a.n==="fox"){
+    m+=`<path d="M72 64 q-12 1 -17 5 M72 69 q-12 3 -16 8" stroke="${INK}" stroke-width="1.1" fill="none" opacity=".4"/>`
+      +`<path d="M128 64 q12 1 17 5 M128 69 q12 3 16 8" stroke="${INK}" stroke-width="1.1" fill="none" opacity=".4"/>`; // whiskers
+  }
+  return m;
+}
 function ears(a){
   const c=a.col,k=a.acc;
   switch(a.ear){
@@ -255,8 +269,8 @@ function head(a){
       +eye(86,66,8)+eye(114,66,8)+blush(74,77)+blush(126,77)+mouth(100,79);
     return s;
   }
-  // chubby base head + soft top sheen
-  s+=`<ellipse cx="100" cy="62" rx="46" ry="42" fill="${c}" stroke="${INK}" stroke-width="3.5"/>`;
+  // chubby base head + soft top sheen (heavier silhouette outline = more graphic)
+  s+=`<ellipse cx="100" cy="62" rx="46" ry="42" fill="${c}" stroke="${INK}" stroke-width="4.2"/>`;
   s+=`<ellipse cx="80" cy="40" rx="22" ry="12" fill="#fff" opacity=".25"/>`;
   if(a.ear==="snail"){
     s+=`<path d="M84 34 C82 20 76 14 74 7 M116 34 C118 20 124 14 126 7" stroke="${INK}" stroke-width="3.5" fill="none"/>`
@@ -267,7 +281,7 @@ function head(a){
       +eye(76,32,8)+eye(124,32,8)+blush(60,62)+blush(140,62)+mouth(100,66);
   }else{
     // symmetric, expressive eyes; the creep stays subtle (tiny fang) — no asymmetry
-    s+=eye(85,61,9)+eye(115,61,9)+blush(70,73)+blush(130,73)+mouth(100,77);
+    s+=eye(85,61,9)+eye(115,61,9)+blush(70,73)+blush(130,73)+marks(a)+mouth(100,77);
   }
   return s;
 }
@@ -280,20 +294,21 @@ function body(a){
       +`<path d="M148 50 C194 22 200 72 160 76 C174 60 160 52 146 56 Z" fill="${k}" stroke="${INK}" stroke-width="3.5"/>`
       +`<path d="M42 60 q7 9 13 2 M158 60 q-7 9 -13 2" stroke="${INK}" stroke-width="2" fill="none" opacity=".4"/>`;
   }
-  // mitten arms (behind the torso)
-  s+=`<ellipse cx="50" cy="60" rx="12" ry="15" fill="${c}" stroke="${INK}" stroke-width="3.5"/>`
-    +`<ellipse cx="150" cy="60" rx="12" ry="15" fill="${c}" stroke="${INK}" stroke-width="3.5"/>`;
-  s+=`<ellipse cx="100" cy="54" rx="50" ry="45" fill="${c}" stroke="${INK}" stroke-width="3.5"/>`;
-  s+=`<ellipse cx="100" cy="66" rx="30" ry="29" fill="#fff" opacity=".2"/>`;       // belly
-  s+=`<ellipse cx="80" cy="34" rx="22" ry="12" fill="#fff" opacity=".22"/>`;       // top sheen
-  s+=`<ellipse cx="100" cy="94" rx="42" ry="14" fill="${k}" opacity=".15"/>`;      // bottom shadow
+  // mitten arms (behind the torso), tucked closer to the narrower upright body
+  s+=`<ellipse cx="56" cy="60" rx="11" ry="16" fill="${c}" stroke="${INK}" stroke-width="3.5"/>`
+    +`<ellipse cx="144" cy="60" rx="11" ry="16" fill="${c}" stroke="${INK}" stroke-width="3.5"/>`;
+  // taller, more upright torso with a heavier graphic outline
+  s+=`<ellipse cx="100" cy="55" rx="44" ry="46" fill="${c}" stroke="${INK}" stroke-width="4.2"/>`;
+  s+=`<ellipse cx="100" cy="66" rx="23" ry="26" fill="#fff" opacity=".45" stroke="${INK}" stroke-width="1.6"/>`; // chest/belly patch
+  s+=`<ellipse cx="82" cy="36" rx="20" ry="11" fill="#fff" opacity=".22"/>`;       // top sheen
+  s+=`<ellipse cx="100" cy="94" rx="38" ry="13" fill="${k}" opacity=".15"/>`;      // bottom shadow
   switch(a.tex){
     case"spot":  s+=`<circle cx="84" cy="44" r="6" fill="${k}"/><circle cx="116" cy="56" r="7" fill="${k}"/><circle cx="98" cy="70" r="5" fill="${k}"/><circle cx="120" cy="36" r="4" fill="${k}"/>`;break;
-    case"spike": for(let i=0;i<7;i++){const ang=Math.PI*(0.15+0.7*i/6);const x=100-48*Math.cos(ang),y=54-44*Math.sin(ang);const x2=100-62*Math.cos(ang),y2=54-58*Math.sin(ang);s+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${k}" stroke-width="3.5" stroke-linecap="round"/>`;}break;
+    case"spike": for(let i=0;i<7;i++){const ang=Math.PI*(0.15+0.7*i/6);const x=100-44*Math.cos(ang),y=55-46*Math.sin(ang);const x2=100-58*Math.cos(ang),y2=55-60*Math.sin(ang);s+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${k}" stroke-width="3.5" stroke-linecap="round"/>`;}break;
     case"shell": s+=`<path d="M100 52 m0 -2 a18 18 0 1 1 -1 0 a11 11 0 1 0 1 6 a5 5 0 1 1 0 0" fill="none" stroke="${k}" stroke-width="3.5"/>`;break;
     case"sucker":s+=`<g fill="${k}">`;for(let r=0;r<3;r++)for(let cc=0;cc<3;cc++)s+=`<circle cx="${86+cc*14}" cy="${42+r*16}" r="3.2"/>`;s+=`</g>`;break;
     case"jelly": s+=`<g stroke="#fff" stroke-width="3" opacity=".5" fill="none"><line x1="86" y1="20" x2="86" y2="86"/><line x1="100" y1="16" x2="100" y2="90"/><line x1="114" y1="20" x2="114" y2="86"/></g>`;break;
-    case"fuzzy": {let f="";for(let i=0;i<15;i++){const ang=Math.PI*(i/14);const x=100-50*Math.cos(ang),y=54-45*Math.sin(ang);f+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} l3 -5 l3 5" stroke="${INK}" stroke-width="2.5" fill="none"/>`;}s+=f;break;}
+    case"fuzzy": {let f="";for(let i=0;i<15;i++){const ang=Math.PI*(i/14);const x=100-44*Math.cos(ang),y=55-46*Math.sin(ang);f+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} l3 -5 l3 5" stroke="${INK}" stroke-width="2.5" fill="none"/>`;}s+=f;break;}
   }
   return s;
 }
