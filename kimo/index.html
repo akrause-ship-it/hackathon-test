@@ -215,12 +215,11 @@ const KSUF=["mochi","gusu","pyon","goro","nyan","peta","muku","bobo","tan","zuki
 const STORE="kimo.collection.v1";
 
 /* ---------- SVG slice builders (each returns markup in a 0..200 x, 0..100 y band) ---------- */
-// small glossy Sanrio-style eye: solid dark oval, one bright highlight, faint under-eye shadow (the gentle "creep")
+// big rounded eye, clean catchlight — symmetric, expressive (between Sanrio and a graphic character style)
 function eye(cx,cy,r){
-  return `<ellipse cx="${cx}" cy="${cy}" rx="${(r*0.85).toFixed(1)}" ry="${r}" fill="#241d17"/>`
-    +`<circle cx="${(cx-r*0.30).toFixed(1)}" cy="${(cy-r*0.35).toFixed(1)}" r="${(r*0.33).toFixed(1)}" fill="#fff"/>`
-    +`<circle cx="${(cx+r*0.22).toFixed(1)}" cy="${(cy+r*0.30).toFixed(1)}" r="${(r*0.14).toFixed(1)}" fill="#fff" opacity=".7"/>`
-    +`<path d="M${(cx-r).toFixed(1)} ${(cy+r+1.6).toFixed(1)} q${r} ${(r*0.7).toFixed(1)} ${(2*r).toFixed(1)} 0" stroke="#a08aa0" stroke-width="1.3" fill="none" opacity=".4"/>`;
+  return `<ellipse cx="${cx}" cy="${cy}" rx="${(r*0.88).toFixed(1)}" ry="${r}" fill="#241d17"/>`
+    +`<circle cx="${(cx-r*0.28).toFixed(1)}" cy="${(cy-r*0.34).toFixed(1)}" r="${(r*0.36).toFixed(1)}" fill="#fff"/>`
+    +`<circle cx="${(cx+r*0.26).toFixed(1)}" cy="${(cy+r*0.32).toFixed(1)}" r="${(r*0.13).toFixed(1)}" fill="#fff" opacity=".65"/>`;
 }
 function blush(cx,cy){return `<ellipse cx="${cx}" cy="${cy}" rx="8" ry="4.5" fill="#f3a3bb" opacity=".55"/>`;}
 // tiny ω mouth with a small fang poking down — cute, faintly unsettling
@@ -253,7 +252,7 @@ function head(a){
     s+=`<path d="M52 92 C46 34 154 34 148 92 Z" fill="${c}" stroke="${INK}" stroke-width="3.5"/>`
       +`<ellipse cx="86" cy="52" rx="30" ry="15" fill="#fff" opacity=".25"/>`
       +`<path d="M58 90 q7 -11 14 0 M78 92 q7 -11 14 0 M108 92 q7 -11 14 0 M128 90 q7 -11 14 0" stroke="${INK}" stroke-width="2" fill="none" opacity=".4"/>`
-      +eye(88,66,7)+eye(114,66,8)+blush(74,76)+blush(128,76)+mouth(101,78);
+      +eye(86,66,8)+eye(114,66,8)+blush(74,77)+blush(126,77)+mouth(100,79);
     return s;
   }
   // chubby base head + soft top sheen
@@ -265,10 +264,10 @@ function head(a){
       +eye(74,7,4)+eye(126,7,4)+blush(74,72)+blush(126,72)+mouth(100,74);
   }else if(a.ear==="frog"){
     s+=`<circle cx="76" cy="32" r="16" fill="${c}" stroke="${INK}" stroke-width="3.5"/><circle cx="124" cy="32" r="16" fill="${c}" stroke="${INK}" stroke-width="3.5"/>`
-      +eye(76,32,7)+eye(124,32,8)+blush(60,62)+blush(140,62)+mouth(100,66);
+      +eye(76,32,8)+eye(124,32,8)+blush(60,62)+blush(140,62)+mouth(100,66);
   }else{
-    // small face, eyes set close with a slight size mismatch = gentle creep
-    s+=eye(86,62,7)+eye(114,62,8)+blush(72,72)+blush(128,72)+mouth(100,76);
+    // symmetric, expressive eyes; the creep stays subtle (tiny fang) — no asymmetry
+    s+=eye(85,61,9)+eye(115,61,9)+blush(70,73)+blush(130,73)+mouth(100,77);
   }
   return s;
 }
