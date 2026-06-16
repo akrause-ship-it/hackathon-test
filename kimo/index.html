@@ -71,8 +71,8 @@
   @media(max-width:420px){.machine{width:200px}}
   .reel{position:relative;overflow:hidden;border-bottom:3px dashed var(--ink)}
   .reel:last-child{border-bottom:none}
-  .strip{display:flex;flex-direction:column;will-change:transform}
-  .tile{flex:none;width:100%}
+  .strip{display:flex;flex-direction:row;will-change:transform}
+  .tile{flex:0 0 100%}
   .tile svg{display:block;width:100%;height:auto}
   .reeltag{position:absolute;top:5px;left:7px;font-family:'DM Mono',monospace;font-size:9px;
     letter-spacing:.12em;color:var(--shadow);background:var(--eye);border:2px solid var(--ink);
@@ -337,17 +337,17 @@ for(const part in sel){
   for(let copy=0;copy<3;copy++) ANIMALS.forEach((a,i)=>{strip+=`<div class="tile">${tileSVG(part,i)}</div>`;});
   reel[part].innerHTML=strip;
 }
-function tileH(part){return reel[part].querySelector('.tile').offsetHeight||120;}
+function tileW(part){return reel[part].querySelector('.tile').offsetWidth||240;}
 // place a reel on an index without animating
-function place(part,i){reel[part].style.transition='none';reel[part].style.transform=`translateY(${-(ANIMALS.length+i)*tileH(part)}px)`;}
-// animate a reel to land on index i
+function place(part,i){reel[part].style.transition='none';reel[part].style.transform=`translateX(${-(ANIMALS.length+i)*tileW(part)}px)`;}
+// animate a reel to land on index i (horizontal spin)
 function spinTo(part,i,dur){
-  const h=tileH(part), n=ANIMALS.length;
+  const w=tileW(part), n=ANIMALS.length;
   reel[part].style.transition='none';
-  reel[part].style.transform=`translateY(0px)`;
-  void reel[part].offsetHeight; // reflow
+  reel[part].style.transform=`translateX(0px)`;
+  void reel[part].offsetWidth; // reflow
   reel[part].style.transition=`transform ${dur}s cubic-bezier(.12,.78,.2,1)`;
-  reel[part].style.transform=`translateY(${-(2*n+i)*h}px)`;
+  reel[part].style.transform=`translateX(${-(2*n+i)*w}px)`;
 }
 
 function syncSelects(){for(const p in sel)sel[p].value=idx[p];}
