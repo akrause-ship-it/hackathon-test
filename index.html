@@ -4,116 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ParkBack · SpotHero → Gusto Reimbursements</title>
-  <meta name="description" content="Automatically turn SpotHero parking transactions into Gusto reimbursement drafts. Review, approve, done — with a $100/month cap." />
+  <meta name="description" content="Redirecting to ParkBack — SpotHero to Gusto parking reimbursements." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🅿️</text></svg>" />
-  <link rel="stylesheet" href="styles.css" />
+  <meta http-equiv="refresh" content="0; url=/parkback/" />
+  <link rel="canonical" href="/parkback/" />
+  <script>window.location.replace("/parkback/");</script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">🅿️</span>
-      <div class="brand-text">
-        <h1>ParkBack</h1>
-        <p class="byline">SpotHero → Gusto · by André Krause</p>
-      </div>
-    </div>
-
-    <div class="user-switch">
-      <label for="user-select" class="visually-hidden">Active user</label>
-      <span class="user-avatar" id="user-avatar" aria-hidden="true">A</span>
-      <select id="user-select" class="user-select" aria-label="Switch user"></select>
-    </div>
-  </header>
-
-  <!-- Demo banner: this is a prototype with mocked SpotHero/Gusto APIs. -->
-  <div class="demo-note" role="note">
-    <strong>Prototype</strong> — SpotHero &amp; Gusto APIs are simulated. The full
-    workflow, $100/month cap, and approvals are real and run in your browser.
-  </div>
-
-  <main class="layout">
-    <!-- LEFT: connections + cap + actions -->
-    <section class="rail" aria-label="Account and controls">
-      <div class="card connections">
-        <h2>Connections</h2>
-        <button id="conn-spothero" class="conn-btn" type="button" data-svc="spothero">
-          <span class="conn-logo" aria-hidden="true">🚗</span>
-          <span class="conn-text">
-            <span class="conn-name">SpotHero</span>
-            <span class="conn-state">Not connected</span>
-          </span>
-          <span class="conn-dot" aria-hidden="true"></span>
-        </button>
-        <button id="conn-gusto" class="conn-btn" type="button" data-svc="gusto">
-          <span class="conn-logo" aria-hidden="true">🅖</span>
-          <span class="conn-text">
-            <span class="conn-name">Gusto</span>
-            <span class="conn-state">Not connected</span>
-          </span>
-          <span class="conn-dot" aria-hidden="true"></span>
-        </button>
-      </div>
-
-      <div class="card cap">
-        <div class="cap-head">
-          <h2>Monthly cap</h2>
-          <span id="cap-month" class="cap-month"></span>
-        </div>
-        <div class="cap-meter" role="img" aria-label="Monthly reimbursement usage">
-          <div id="cap-fill" class="cap-fill"></div>
-        </div>
-        <p class="cap-numbers">
-          <strong id="cap-used">$0.00</strong>
-          <span>of $100.00 submitted</span>
-        </p>
-        <p id="cap-status" class="cap-status"></p>
-      </div>
-
-      <div class="card actions">
-        <h2>SpotHero activity</h2>
-        <p class="muted">Simulate the background poller finding new parking charges.</p>
-        <button id="poll-btn" class="primary-btn" type="button">
-          <span aria-hidden="true">🔄</span> Check for new transactions
-        </button>
-        <button id="poll-many" class="ghost-btn" type="button">Drop a busy week (3–4)</button>
-      </div>
-    </section>
-
-    <!-- RIGHT: the work -->
-    <section class="board" aria-label="Reimbursements">
-      <nav class="tabs" role="tablist" aria-label="Reimbursement views">
-        <button class="tab is-active" role="tab" data-tab="drafts" aria-selected="true">
-          Drafts <span id="count-drafts" class="pill">0</span>
-        </button>
-        <button class="tab" role="tab" data-tab="held" aria-selected="false">
-          Held <span id="count-held" class="pill">0</span>
-        </button>
-        <button class="tab" role="tab" data-tab="submitted" aria-selected="false">
-          Submitted <span id="count-submitted" class="pill">0</span>
-        </button>
-      </nav>
-
-      <div id="panel-drafts" class="panel" role="tabpanel"></div>
-      <div id="panel-held" class="panel" role="tabpanel" hidden></div>
-      <div id="panel-submitted" class="panel" role="tabpanel" hidden></div>
-    </section>
-  </main>
-
-  <!-- Notification feed (bell) -->
-  <button id="bell" class="bell" type="button" aria-label="Notifications" aria-expanded="false">
-    <span aria-hidden="true">🔔</span>
-    <span id="bell-badge" class="bell-badge" hidden>0</span>
-  </button>
-  <aside id="notif-panel" class="notif-panel" aria-label="Notifications" hidden>
-    <div class="notif-head">
-      <h2>Notifications</h2>
-      <button id="notif-clear" class="link-btn" type="button">Mark all read</button>
-    </div>
-    <div id="notif-list" class="notif-list"></div>
-  </aside>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <script src="script.js"></script>
+  <p>Redirecting to <a href="/parkback/">ParkBack</a>…</p>
 </body>
 </html>

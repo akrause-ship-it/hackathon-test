@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParkBack · SpotHero → Gusto Reimbursements</title>
+  <meta name="description" content="Turn SpotHero parking receipts into Gusto reimbursements. Review, approve, hand off — within your $200/month parking allowance." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🅿️</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🅿️</span>
+      <div class="brand-text">
+        <h1>ParkBack</h1>
+        <p class="byline">SpotHero → Gusto · by André Krause</p>
+      </div>
+    </div>
+
+    <div class="user-switch">
+      <label for="user-select" class="visually-hidden">Active user</label>
+      <span class="user-avatar" id="user-avatar" aria-hidden="true">A</span>
+      <select id="user-select" class="user-select" aria-label="Switch user"></select>
+    </div>
+  </header>
+
+  <!-- What ParkBack does vs. what Gusto does. -->
+  <div class="demo-note" role="note">
+    <strong>What ParkBack does</strong> — it watches SpotHero, tracks your
+    <strong>$200/month parking allowance</strong>, and preps each receipt. Gusto does
+    the final upload &amp; extraction, so approving <strong>hands the receipt off</strong>
+    to Gusto's reimbursement page. Runs entirely in your browser.
+  </div>
+
+  <main class="layout">
+    <!-- LEFT: connections + cap + actions -->
+    <section class="rail" aria-label="Account and controls">
+      <div class="card connections">
+        <h2>Connections</h2>
+        <button id="conn-spothero" class="conn-btn" type="button" data-svc="spothero">
+          <span class="conn-logo" aria-hidden="true">🚗</span>
+          <span class="conn-text">
+            <span class="conn-name">SpotHero</span>
+            <span class="conn-state">Not connected</span>
+          </span>
+          <span class="conn-dot" aria-hidden="true"></span>
+        </button>
+        <button id="conn-gusto" class="conn-btn" type="button" data-svc="gusto">
+          <span class="conn-logo" aria-hidden="true">🅖</span>
+          <span class="conn-text">
+            <span class="conn-name">Gusto</span>
+            <span class="conn-state">Not connected</span>
+          </span>
+          <span class="conn-dot" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <div class="card cap">
+        <div class="cap-head">
+          <h2>Monthly allowance</h2>
+          <span id="cap-month" class="cap-month"></span>
+        </div>
+        <div class="cap-meter" role="img" aria-label="Monthly reimbursement usage">
+          <div id="cap-fill" class="cap-fill"></div>
+        </div>
+        <p class="cap-numbers">
+          <strong id="cap-used">$0.00</strong>
+          <span>of <span id="cap-limit">$200.00</span> submitted</span>
+        </p>
+        <p id="cap-split" class="cap-split muted small"></p>
+        <p id="cap-status" class="cap-status"></p>
+      </div>
+
+      <div class="card actions">
+        <h2>SpotHero activity</h2>
+        <p class="muted">Screenshot the SpotHero receipt email on your phone and import it — ParkBack reads the details and preps it for Gusto.</p>
+        <button id="import-btn" class="primary-btn" type="button">
+          <span aria-hidden="true">📄</span> Import a receipt
+        </button>
+        <p class="muted small demo-sep">— or generate demo data —</p>
+        <button id="poll-btn" class="ghost-btn" type="button">🔄 Simulate one transaction</button>
+        <button id="poll-many" class="ghost-btn" type="button">Drop a busy week (3–4)</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: the work -->
+    <section class="board" aria-label="Reimbursements">
+      <nav class="tabs" role="tablist" aria-label="Reimbursement views">
+        <button class="tab is-active" role="tab" data-tab="drafts" aria-selected="true">
+          Drafts <span id="count-drafts" class="pill">0</span>
+        </button>
+        <button class="tab" role="tab" data-tab="held" aria-selected="false">
+          Held <span id="count-held" class="pill">0</span>
+        </button>
+        <button class="tab" role="tab" data-tab="submitted" aria-selected="false">
+          Submitted <span id="count-submitted" class="pill">0</span>
+        </button>
+      </nav>
+
+      <div id="panel-drafts" class="panel" role="tabpanel"></div>
+      <div id="panel-held" class="panel" role="tabpanel" hidden></div>
+      <div id="panel-submitted" class="panel" role="tabpanel" hidden></div>
+    </section>
+  </main>
+
+  <!-- Notification feed (bell) -->
+  <button id="bell" class="bell" type="button" aria-label="Notifications" aria-expanded="false">
+    <span aria-hidden="true">🔔</span>
+    <span id="bell-badge" class="bell-badge" hidden>0</span>
+  </button>
+  <aside id="notif-panel" class="notif-panel" aria-label="Notifications" hidden>
+    <div class="notif-head">
+      <h2>Notifications</h2>
+      <button id="notif-clear" class="link-btn" type="button">Mark all read</button>
+    </div>
+    <div id="notif-list" class="notif-list"></div>
+  </aside>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Import a real SpotHero receipt -->
+  <div id="import-modal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="import-title">
+      <div class="modal-head">
+        <h2 id="import-title">Import a SpotHero receipt</h2>
+        <button id="import-close" class="icon-btn" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Step 1: provide the receipt -->
+        <div id="import-step-input">
+          <label class="drop" id="import-drop">
+            <input id="import-file" type="file"
+              accept=".pdf,.txt,.eml,.html,.htm,image/*" hidden />
+            <span id="import-drop-label">📄 Drop a receipt — PDF, photo/screenshot, .eml or .txt — or browse</span>
+          </label>
+          <p class="or">— or paste the receipt / confirmation email —</p>
+          <textarea id="import-text" rows="7"
+            placeholder="Paste your SpotHero confirmation or receipt email here…"></textarea>
+          <div class="modal-actions">
+            <button id="import-sample" class="link-btn" type="button">Load a sample receipt</button>
+            <span class="spacer"></span>
+            <button id="import-parse" class="primary-btn inline" type="button">Parse receipt</button>
+          </div>
+          <p id="import-status" class="import-status" hidden></p>
+          <p id="import-error" class="import-error" hidden></p>
+        </div>
+
+        <!-- Step 2: review & correct, then add -->
+        <form id="import-step-review" hidden>
+          <div class="fields">
+            <div class="field full">
+              <label for="f-venue">Facility / venue</label>
+              <input id="f-venue" type="text" required />
+            </div>
+            <div class="field">
+              <label for="f-city">City</label>
+              <input id="f-city" type="text" placeholder="Chicago, IL" />
+            </div>
+            <div class="field">
+              <label for="f-amount">Amount ($)</label>
+              <input id="f-amount" type="number" min="0" step="0.01" required />
+            </div>
+            <div class="field">
+              <label for="f-date">Date &amp; time</label>
+              <input id="f-date" type="datetime-local" required />
+            </div>
+            <div class="field">
+              <label for="f-conf">Confirmation #</label>
+              <input id="f-conf" type="text" placeholder="optional" />
+            </div>
+            <div class="field full">
+              <label for="f-url">Receipt URL</label>
+              <input id="f-url" type="url" placeholder="optional" />
+            </div>
+          </div>
+          <p class="muted small" style="margin:12px 0 0">Review the parsed details and fix anything before adding.</p>
+          <p id="import-error2" class="import-error" hidden></p>
+          <div class="modal-actions">
+            <button id="import-back" class="ghost-btn inline" type="button">Back</button>
+            <span class="spacer"></span>
+            <button type="submit" class="primary-btn inline">Add to drafts</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
